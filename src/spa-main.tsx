@@ -1,3 +1,4 @@
+import "@/lib/stream-async-iterator";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import {

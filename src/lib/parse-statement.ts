@@ -1,5 +1,6 @@
 import { emptyCharge, type Charge } from "./types";
 import { parseLooseDate, parseMoney } from "./utils";
+import { polyfillReadableStreamAsyncIterator } from "./stream-async-iterator";
 
 export type ParsedStatement = {
   employeeName: string;
@@ -159,29 +160,19 @@ function guessDescription(vendor: string) {
 }
 
 export async function extractPdfText(file: Blob) {
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
-  const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  GlobalWorkerOptions.workerSrc = worker;
-  const data = await file.arrayBuffer();
-  const pdf = await getDocument({ data }).promise;
+  polyfillReadableStreamAsyncIterator();
+  const pdf = await loadPdf(file);
   const pages: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const line = content.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ");
-    pages.push(line);
+    pages.push(await readPageText(page));
   }
   return pages.join("\n");
 }
 
 export async function renderPdfPages(file: Blob, maxPages = 3, scale = 1.35) {
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
-  const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  GlobalWorkerOptions.workerSrc = worker;
-  const data = await file.arrayBuffer();
-  const pdf = await getDocument({ data }).promise;
+  polyfillReadableStreamAsyncIterator();
+  const pdf = await loadPdf(file);
   const out: string[] = [];
   const count = Math.min(pdf.numPages, maxPages);
   for (let i = 1; i <= count; i++) {
@@ -196,4 +187,41 @@ export async function renderPdfPages(file: Blob, maxPages = 3, scale = 1.35) {
     out.push(canvas.toDataURL("image/jpeg", 0.72));
   }
   return out;
+}
+
+async function loadPdf(file: Blob) {
+  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
+  const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  GlobalWorkerOptions.workerSrc = worker;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return getDocument({
+    data: bytes.slice(),
+    disableRange: true,
+    disableStream: true,
+    isOffscreenCanvasSupported: false,
+  }).promise;
+}
+
+async function readPageText(page: {
+  getTextContent: () => Promise<{ items: unknown[] }>;
+  streamTextContent?: () => ReadableStream<{ items?: Array<{ str?: string }> }>;
+}) {
+  try {
+    const content = await page.getTextContent();
+    return content.items
+      .map((item) => (item && typeof item === "object" && "str" in item ? String((item as { str?: string }).str ?? "") : ""))
+      .join(" ");
+  } catch {
+    if (!page.streamTextContent) return "";
+    const reader = page.streamTextContent().getReader();
+    const parts: string[] = [];
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      for (const item of value?.items ?? []) {
+        if (item.str) parts.push(item.str);
+      }
+    }
+    return parts.join(" ");
+  }
 }

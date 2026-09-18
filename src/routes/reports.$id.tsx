@@ -72,7 +72,14 @@ export function ReportPage() {
     try {
       const dataUrl = await fileToDataUrl(file);
       updateReport(id, { statementName: file.name, statementDataUrl: dataUrl });
-      const text = await extractPdfText(file);
+      let text = "";
+      try {
+        text = await extractPdfText(file);
+      } catch (err) {
+        console.warn("statement text extract failed", err);
+        setError("Statement is attached. Couldn’t auto-read the charges — add them by hand.");
+        return;
+      }
       let parsed = parseStatementText(text);
       if (parsed.charges.length === 0 && import.meta.env.VITE_SPA !== "true") {
         setBusy("Reading statement with AI…");
@@ -96,8 +103,6 @@ export function ReportPage() {
               }),
             ),
           };
-        } else {
-          throw new Error(ai.error);
         }
       }
       updateReport(id, {
@@ -107,6 +112,9 @@ export function ReportPage() {
         charges: parsed.charges.length ? parsed.charges : current.charges,
       });
       if (parsed.charges[0]) setActiveId(parsed.charges[0].id);
+      if (!parsed.charges.length) {
+        setError("Statement is attached. Add each charge below if they didn’t fill in automatically.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read that statement");
     } finally {
