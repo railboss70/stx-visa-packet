@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@source ".";
+@source "../spa";
+
+@theme {
+  --font-display: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-navy: #12355b;
+  --color-navy-deep: #0b233f;
+  --color-steel: #215f7a;
+  --color-paper: #f3efe6;
+  --color-paper-2: #e8e1d2;
+  --color-card: #fcfaf6;
+  --color-ink: #1c1f24;
+  --color-muted: #5c6570;
+  --color-subtle: #8a8478;
+  --color-line: #d5cfc3;
+  --color-line-strong: #b7b09f;
+  --color-ok: #2f6b4f;
+  --color-ok-soft: #dce8e1;
+  --color-warn: #a15c12;
+  --color-warn-soft: #f3e4cc;
+  --color-danger: #9b2c2c;
+  --color-danger-soft: #f3d6d4;
+  --color-or: #b42318;
+  --color-background: #f3efe6;
+  --color-foreground: #1c1f24;
+  --color-primary: #12355b;
+  --color-primary-foreground: #fcfaf6;
+  --color-secondary: #e8e1d2;
+  --color-secondary-foreground: #1c1f24;
+  --color-muted-foreground: #5c6570;
+  --color-accent: #215f7a;
+  --color-accent-foreground: #fcfaf6;
+  --color-border: #d5cfc3;
+  --color-input: #d5cfc3;
+  --color-ring: #215f7a;
+  --color-destructive: #9b2c2c;
+  --color-card-foreground: #1c1f24;
+  --color-popover: #fcfaf6;
+  --color-popover-foreground: #1c1f24;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius: 10px;
+
+  --shadow-border:
+    0px 0px 0px 1px rgba(18, 53, 91, 0.08),
+    0px 1px 2px -1px rgba(18, 53, 91, 0.08),
+    0px 2px 8px 0px rgba(18, 53, 91, 0.05);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
