@@ -18,8 +18,4 @@ Same flow as Daily Summary and Material Transfer:
 3. Tap **Add to Home Screen**.
 4. Name it **STX Visa** and Add.
 
-If the link 404s the first time, turn Pages on (one-time):
-
-GitHub → **stx-visa-packet** → **Settings** → **Pages** → Deploy from a branch → **main** / **docs** → Save.
-
-Wait about a minute, then open the Safari link again.
+If the link still shows this README, wait a minute and refresh. The app is the live page at that Safari link.
