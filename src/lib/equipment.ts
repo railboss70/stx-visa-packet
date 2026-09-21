@@ -157,6 +157,8 @@ function scoreUnit(unit: EquipUnit, words: string[]) {
   return 40;
 }
 
+export const EMPTY_EQUIP: EquipUnit[] = [];
+
 export const EQUIP_TYPE_CHIPS = [
   "Backhoe",
   "Loader",

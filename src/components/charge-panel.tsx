@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { WORK_ORDER_CODES, suggestCodes, woLabel } from "@/lib/cost-codes";
-import { mergeEquipment, normalizeEquipNumber, STX_FLEET, type EquipUnit } from "@/lib/equipment";
+import { EMPTY_EQUIP, mergeEquipment, normalizeEquipNumber, STX_FLEET, type EquipUnit } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
 import type { AppSettings, Charge, ChargeKind, EquipSuffix } from "@/lib/types";
 import { formatMdY, formatMoney } from "@/lib/utils";
@@ -27,7 +27,7 @@ export function ChargePanel({
   onReadReceipt?: (receiptId: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const savedEquip = useVisaStore((s) => s.settings.equipment ?? []);
+  const savedEquip = useVisaStore((s) => s.settings.equipment) ?? EMPTY_EQUIP;
   const reports = useVisaStore((s) => s.reports);
   const updateSettings = useVisaStore((s) => s.updateSettings);
   const fleet = useMemo(() => {

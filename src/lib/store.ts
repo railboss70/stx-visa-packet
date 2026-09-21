@@ -137,6 +137,19 @@ export const useVisaStore = create<Store>()(
     {
       name: "stx-visa-packet",
       partialize: (s) => ({ settings: s.settings, reports: s.reports }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as { settings?: AppSettings; reports?: VisaReport[] };
+        return {
+          ...current,
+          ...p,
+          settings: {
+            ...DEFAULT_SETTINGS,
+            ...(p.settings ?? {}),
+            equipment: Array.isArray(p.settings?.equipment) ? p.settings.equipment : [],
+          },
+          reports: Array.isArray(p.reports) ? p.reports : current.reports,
+        };
+      },
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },

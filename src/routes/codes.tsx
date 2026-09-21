@@ -3,14 +3,14 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { INDIRECT_CODES, JOB_CODES, WORK_ORDER_CODES, searchCodes } from "@/lib/cost-codes";
-import { STX_FLEET, mergeEquipment, searchEquipment } from "@/lib/equipment";
+import { EMPTY_EQUIP, STX_FLEET, mergeEquipment, searchEquipment } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
 
 export const Route = createFileRoute("/codes")({ component: CodesPage });
 
 export function CodesPage() {
   const [q, setQ] = useState("");
-  const saved = useVisaStore((s) => s.settings.equipment ?? []);
+  const saved = useVisaStore((s) => s.settings.equipment) ?? EMPTY_EQUIP;
   const reports = useVisaStore((s) => s.reports);
   const fleet = useMemo(() => {
     const learned = reports.flatMap((r) =>
