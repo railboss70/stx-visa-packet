@@ -8,11 +8,13 @@ export function ReceiptDrop({
   receipts,
   onChange,
   onRead,
+  onError,
   busy,
 }: {
   receipts: Receipt[];
   onChange: (next: Receipt[]) => void;
   onRead?: (receipt: Receipt) => void;
+  onError?: (message: string) => void;
   busy?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -22,20 +24,35 @@ export function ReceiptDrop({
   async function ingest(files: FileList | File[]) {
     const list = Array.from(files);
     const added: Receipt[] = [];
+    const failed: string[] = [];
     for (const file of list) {
-      if (file.size > 12_000_000) continue;
-      const mime = file.type || guessMime(file.name);
-      const dataUrl = mime.startsWith("image/")
-        ? await compressImage(file)
-        : await blobDataUrl(file);
-      added.push({
-        id: uid(),
-        name: file.name || `receipt.${extFromMime(mime)}`,
-        mime,
-        dataUrl,
-      });
+      if (file.size > 12_000_000) {
+        failed.push(`${file.name || "that file"} (too large)`);
+        continue;
+      }
+      try {
+        const mime = file.type || guessMime(file.name);
+        const treatAsImage = mime.startsWith("image/") || /\.hei[cf]$/i.test(file.name);
+        const dataUrl = treatAsImage ? await compressImage(file) : await blobDataUrl(file);
+        const storedMime = dataUrl.startsWith("data:image/")
+          ? dataUrl.slice(5, dataUrl.indexOf(";")) || "image/jpeg"
+          : mime;
+        added.push({
+          id: uid(),
+          name: file.name || `receipt.${extFromMime(storedMime)}`,
+          mime: storedMime,
+          dataUrl,
+        });
+      } catch {
+        failed.push(file.name || "that file");
+      }
     }
     if (added.length) onChange([...receipts, ...added]);
+    if (failed.length) {
+      onError?.(
+        `Couldn't read ${failed.join(", ")}. Try again, or take a photo instead of picking one from your library.`,
+      );
+    }
   }
 
   return (
@@ -67,7 +84,7 @@ export function ReceiptDrop({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept="image/*,.heic,.heif,application/pdf"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -135,8 +152,10 @@ export function ReceiptDrop({
 }
 
 function guessMime(name: string) {
-  if (name.toLowerCase().endsWith(".pdf")) return "application/pdf";
-  if (name.toLowerCase().endsWith(".png")) return "image/png";
+  const lower = name.toLowerCase();
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".heic") || lower.endsWith(".heif")) return "image/heic";
   return "image/jpeg";
 }
 

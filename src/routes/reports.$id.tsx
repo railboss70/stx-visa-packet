@@ -319,6 +319,7 @@ export function ReportPage() {
                 busyRead={busy.includes("receipt")}
                 onPatch={(patch) => updateCharge(id, active.id, patch)}
                 onKind={(kind: ChargeKind) => applyKind(id, active.id, kind)}
+                onReceiptError={setError}
                 onReadReceipt={
                   import.meta.env.VITE_SPA === "true" ? undefined : (rid) => void onReadReceipt(rid)
                 }

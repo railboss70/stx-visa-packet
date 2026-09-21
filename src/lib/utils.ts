@@ -83,10 +83,21 @@ export async function fileToDataUrl(file: Blob) {
 }
 
 export async function compressImage(file: Blob, maxEdge = 1800, quality = 0.84) {
-  if (!file.type.startsWith("image/")) {
+  let source: Blob = file;
+  const heic = isHeicBlob(file);
+  if (heic) {
+    try {
+      const heic2any = (await import("heic2any")).default;
+      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality });
+      source = Array.isArray(converted) ? converted[0] : converted;
+    } catch {
+      // conversion failed — loadImage below will throw if the browser cannot read it
+    }
+  }
+  if (!source.type.startsWith("image/") && !heic) {
     return fileToDataUrl(file);
   }
-  const url = URL.createObjectURL(file);
+  const url = URL.createObjectURL(source);
   try {
     const img = await loadImage(url);
     const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
@@ -96,7 +107,7 @@ export async function compressImage(file: Blob, maxEdge = 1800, quality = 0.84) 
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return fileToDataUrl(file);
+    if (!ctx) return fileToDataUrl(source);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
@@ -104,6 +115,11 @@ export async function compressImage(file: Blob, maxEdge = 1800, quality = 0.84) 
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export function isHeicBlob(file: Blob) {
+  const name = file instanceof File ? file.name : "";
+  return /\.hei[cf]$/i.test(name) || file.type === "image/heic" || file.type === "image/heif";
 }
 
 function loadImage(src: string) {

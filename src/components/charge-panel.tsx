@@ -18,6 +18,7 @@ export function ChargePanel({
   onPatch,
   onKind,
   onReadReceipt,
+  onReceiptError,
 }: {
   charge: Charge;
   settings: AppSettings;
@@ -25,6 +26,7 @@ export function ChargePanel({
   onPatch: (patch: Partial<Charge>) => void;
   onKind: (kind: ChargeKind) => void;
   onReadReceipt?: (receiptId: string) => void;
+  onReceiptError?: (message: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const savedEquip = useVisaStore((s) => s.settings.equipment) ?? EMPTY_EQUIP;
@@ -243,6 +245,7 @@ export function ChargePanel({
             busy={busyRead}
             onChange={(receipts) => onPatch({ receipts })}
             onRead={onReadReceipt ? (r) => onReadReceipt(r.id) : undefined}
+            onError={onReceiptError}
           />
         </div>
       </div>
