@@ -65,20 +65,23 @@ export function ChargePanel({
             {charge.orderNo ? ` · ${charge.orderNo}` : ""}
           </p>
         </div>
-        {charge.kind === "workOrder" && charge.jobNumber && charge.costCode ? (
-          <Badge tone="ok">
-            {charge.jobNumber} · {charge.costCode}
-          </Badge>
-        ) : charge.kind && charge.costCode ? (
-          <Badge tone="ok">{charge.costCode}</Badge>
-        ) : charge.kind === "equipment" && charge.equipSuffix ? (
-          <Badge tone="ok">
-            {charge.equipNumber}
-            {charge.equipSuffix}
-          </Badge>
-        ) : (
-          <Badge tone="warn">Needs coding</Badge>
-        )}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {charge.amount < 0 ? <Badge tone="navy">Credit</Badge> : null}
+          {charge.kind === "workOrder" && charge.jobNumber && charge.costCode ? (
+            <Badge tone="ok">
+              {charge.jobNumber} · {charge.costCode}
+            </Badge>
+          ) : charge.kind && charge.costCode ? (
+            <Badge tone="ok">{charge.costCode}</Badge>
+          ) : charge.kind === "equipment" && charge.equipSuffix ? (
+            <Badge tone="ok">
+              {charge.equipNumber}
+              {charge.equipSuffix}
+            </Badge>
+          ) : (
+            <Badge tone="warn">Needs coding</Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -97,7 +100,21 @@ export function ChargePanel({
           />
         </Field>
         <Field label="Amount">
-          <AmountInput key={charge.id} value={charge.amount} onChange={(n) => onPatch({ amount: n })} />
+          <div className="flex items-center gap-2">
+            <AmountInput key={charge.id} value={charge.amount} onChange={(n) => onPatch({ amount: n })} />
+            <button
+              type="button"
+              aria-pressed={charge.amount < 0}
+              onClick={() => onPatch({ amount: charge.amount ? -charge.amount : 0 })}
+              className={`h-10 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors ${
+                charge.amount < 0
+                  ? "border-navy bg-navy text-primary-foreground"
+                  : "border-line-strong bg-paper text-muted hover:bg-paper-2"
+              }`}
+            >
+              Credit
+            </button>
+          </div>
         </Field>
       </div>
 

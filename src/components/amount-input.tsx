@@ -1,5 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "./ui/input";
+
+function amountText(value: number) {
+  return value ? value.toFixed(2) : "";
+}
+
+function looksLikeAmount(raw: string) {
+  return raw === "" || /^-?\d*\.?\d{0,2}$/.test(raw);
+}
+
+function parseTyping(raw: string) {
+  if (raw === "" || raw === "-" || raw === "." || raw === "-.") return 0;
+  return Number(raw);
+}
 
 /** Keep the typed decimal on iPhone; Number("12.") was wiping the dot. */
 export function AmountInput({
@@ -9,7 +22,13 @@ export function AmountInput({
   value: number;
   onChange: (n: number) => void;
 }) {
-  const [text, setText] = useState(() => (value ? value.toFixed(2) : ""));
+  const [text, setText] = useState(() => amountText(value));
+
+  useEffect(() => {
+    const typed = parseTyping(text);
+    if (typed === value) return;
+    setText(amountText(value));
+  }, [value, text]);
 
   return (
     <Input
@@ -21,19 +40,17 @@ export function AmountInput({
       placeholder="0.00"
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, ".");
-        if (raw !== "" && !/^\d*\.?\d{0,2}$/.test(raw)) return;
+        if (!looksLikeAmount(raw)) return;
         setText(raw);
-        if (raw === "" || raw === ".") onChange(0);
-        else onChange(Number(raw));
+        onChange(parseTyping(raw));
       }}
       onBlur={() => {
-        if (text === "" || text === ".") {
+        const n = parseTyping(text);
+        if (!Number.isFinite(n) || text === "" || text === "-" || text === "." || text === "-.") {
           setText("");
           onChange(0);
           return;
         }
-        const n = Number(text);
-        if (!Number.isFinite(n)) return;
         setText(n.toFixed(2));
         onChange(n);
       }}
