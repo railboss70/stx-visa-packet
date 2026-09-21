@@ -1,31 +1,44 @@
+import { FLEET_DIRECTORY } from "./fleet-directory";
+
 export type EquipUnit = {
   number: string;
   name: string;
   keywords: string[];
+  assignedTo?: string;
+  type?: string;
+  flags?: string;
+  status?: string;
+  site?: string;
+  year?: string;
+  make?: string;
+  model?: string;
+  searchText?: string;
 };
 
-const TYPE_ALIASES: Record<string, string[]> = {
-  backhoe: ["back hoe", "back-hoe", "hoe", "bh"],
-  loader: ["front end", "wheel loader", "end loader", "fel", "bucket loader"],
-  excavator: ["trackhoe", "track hoe", "ex", "digging", "crawler"],
-  tamper: ["tamp", "ballast tamper"],
-  regulator: ["ballast regulator"],
-  pickup: ["truck", "crew truck", "f150", "f-150", "f250", "f-250"],
-  dump: ["dump truck", "end dump"],
-  trailer: ["lowboy", "tag", "equipment trailer"],
-  welder: ["weld", "lincoln"],
-  forklift: ["fork lift", "lift truck"],
-  "skid steer": ["skidsteer", "bobcat", "ssl"],
-  compressor: ["air compressor"],
-  generator: ["gen", "light plant"],
-  crane: ["boom", "picker"],
-  "hi-rail": ["hirail", "hi rail", "hyrail"],
-  dozer: ["bulldozer", "crawler tractor"],
-  roller: ["compactor"],
-};
+export const STX_FLEET: EquipUnit[] = FLEET_DIRECTORY.map((row) => ({
+  number: row.code,
+  name: row.name,
+  assignedTo: row.assignedTo,
+  type: row.type,
+  flags: row.flags,
+  status: row.status,
+  site: row.site,
+  year: row.year,
+  make: row.make,
+  model: row.model,
+  searchText: row.searchText,
+  keywords: [],
+}));
 
 export function normalizeEquipNumber(raw: string) {
   return raw.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase();
+}
+
+export function keywordsFor(name: string) {
+  return name
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
 }
 
 export function parseEquipPaste(raw: string): EquipUnit[] {
@@ -53,20 +66,14 @@ export function parseEquipPaste(raw: string): EquipUnit[] {
     const key = number.toUpperCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ number, name, keywords: keywordsFor(name) });
+    out.push({
+      number,
+      name,
+      keywords: keywordsFor(name),
+      searchText: `${number} ${name}`.toLowerCase(),
+    });
   }
   return out;
-}
-
-export function keywordsFor(name: string) {
-  const n = name.toLowerCase();
-  const extra: string[] = [];
-  for (const [type, aliases] of Object.entries(TYPE_ALIASES)) {
-    if (n.includes(type) || aliases.some((a) => n.includes(a))) {
-      extra.push(type, ...aliases);
-    }
-  }
-  return Array.from(new Set([n, ...n.split(/\s+/).filter((w) => w.length > 2), ...extra]));
 }
 
 export function mergeEquipment(...lists: EquipUnit[][]) {
@@ -76,11 +83,19 @@ export function mergeEquipment(...lists: EquipUnit[][]) {
       const number = normalizeEquipNumber(unit.number);
       if (!number) continue;
       const prev = map.get(number);
-      const name = (unit.name || prev?.name || "").trim();
       map.set(number, {
         number,
-        name,
-        keywords: Array.from(new Set([...(prev?.keywords ?? []), ...keywordsFor(name), ...unit.keywords])),
+        name: unit.name || prev?.name || "",
+        assignedTo: unit.assignedTo || prev?.assignedTo,
+        type: unit.type || prev?.type,
+        flags: unit.flags || prev?.flags,
+        status: unit.status || prev?.status,
+        site: unit.site || prev?.site,
+        year: unit.year || prev?.year,
+        make: unit.make || prev?.make,
+        model: unit.model || prev?.model,
+        searchText: prev?.searchText || unit.searchText || haystack(unit),
+        keywords: Array.from(new Set([...(prev?.keywords ?? []), ...keywordsFor(unit.name), ...unit.keywords])),
       });
     }
   }
@@ -90,49 +105,67 @@ export function mergeEquipment(...lists: EquipUnit[][]) {
   });
 }
 
+function haystack(unit: EquipUnit) {
+  return [
+    unit.searchText,
+    unit.number,
+    unit.name,
+    unit.assignedTo,
+    unit.type,
+    unit.flags,
+    unit.site,
+    unit.year,
+    unit.make,
+    unit.model,
+    ...(unit.keywords ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function queryWords(query: string) {
+  return query
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 0);
+}
+
 export function searchEquipment(query: string, fleet: EquipUnit[]) {
-  const q = query.trim().toLowerCase();
-  if (!q) return fleet;
-  const expanded = new Set<string>([q, ...q.split(/\s+/).filter(Boolean)]);
-  for (const [type, aliases] of Object.entries(TYPE_ALIASES)) {
-    if (q.includes(type) || aliases.some((a) => q.includes(a) || a.includes(q))) {
-      expanded.add(type);
-      for (const a of aliases) expanded.add(a);
-    }
-  }
+  const words = queryWords(query);
+  if (!words.length) return fleet;
   return fleet
-    .map((unit) => ({ unit, score: scoreUnit(unit, q, expanded) }))
+    .map((unit) => ({ unit, score: scoreUnit(unit, words) }))
     .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || a.unit.name.localeCompare(b.unit.name))
+    .sort((a, b) => b.score - a.score || a.unit.number.localeCompare(b.unit.number))
     .map((x) => x.unit);
 }
 
-function scoreUnit(unit: EquipUnit, q: string, expanded: Set<string>) {
+function scoreUnit(unit: EquipUnit, words: string[]) {
+  const hay = haystack(unit);
+  if (!words.every((w) => hay.includes(w))) return 0;
   const number = unit.number.toLowerCase();
   const name = unit.name.toLowerCase();
-  if (number === q) return 100;
-  if (number.startsWith(q)) return 90;
-  if (number.includes(q)) return 70;
-  if (name === q) return 80;
-  if (name.startsWith(q)) return 60;
-  if (name.includes(q)) return 50;
-  for (const token of expanded) {
-    if (token.length < 2) continue;
-    if (unit.keywords.some((k) => k.includes(token) || token.includes(k))) return 40;
-  }
-  return 0;
+  const assigned = (unit.assignedTo ?? "").toLowerCase();
+  const q = words.join(" ");
+  if (number === q.replace(/\s+/g, "")) return 100;
+  if (number.startsWith(words[0]) && words.length === 1) return 90;
+  if (assigned && words.every((w) => assigned.includes(w))) return 80;
+  if (name.includes(q)) return 70;
+  if (words.every((w) => name.includes(w))) return 60;
+  return 40;
 }
 
 export const EQUIP_TYPE_CHIPS = [
   "Backhoe",
   "Loader",
+  "Skid steer",
   "Excavator",
+  "Crew truck",
+  "Supervisor",
   "Tamper",
-  "Regulator",
-  "Pickup",
   "Dump",
   "Trailer",
-  "Welder",
-  "Skid steer",
-  "Forklift",
+  "Air compressor",
 ];

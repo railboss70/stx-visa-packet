@@ -192,9 +192,9 @@ export function EquipmentCoder({
   const [query, setQuery] = useState("");
   const [addNumber, setAddNumber] = useState("");
   const [addName, setAddName] = useState("");
-  const matches = useMemo(() => searchEquipment(query, fleet), [query, fleet]);
-  const shown = (query ? matches : fleet).slice(0, 20);
   const selected = fleet.find((u) => u.number === number);
+  const matches = useMemo(() => searchEquipment(query, fleet), [query, fleet]);
+  const shown = query.trim() ? matches.slice(0, 25) : selected ? [selected] : [];
 
   function pick(unit: EquipUnit) {
     onNumber(unit.number);
@@ -220,8 +220,9 @@ export function EquipmentCoder({
         <Input
           id="equip-search"
           value={query}
-          autoCapitalize="characters"
-          placeholder="backhoe, loader, FC1400…"
+          autoCapitalize="off"
+          autoCorrect="off"
+          placeholder="backhoe, matt truck, FC0900…"
           className="mt-1.5"
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -245,29 +246,55 @@ export function EquipmentCoder({
       </div>
 
       {shown.length ? (
-        <div className="max-h-56 overflow-y-auto rounded-lg border border-line bg-card">
-          {shown.map((unit) => (
-            <button
-              key={unit.number}
-              type="button"
-              onClick={() => pick(unit)}
-              className={cn(
-                "flex w-full items-center justify-between gap-3 border-b border-line px-3 py-2.5 text-left last:border-0",
-                number === unit.number ? "bg-navy text-primary-foreground" : "hover:bg-paper-2",
-              )}
-            >
-              <span className="font-mono text-sm">{unit.number}</span>
-              <span className={cn("text-sm", number === unit.number ? "text-primary-foreground/80" : "text-muted")}>
-                {unit.name || "Unit"}
-              </span>
-            </button>
-          ))}
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-line bg-card">
+          {query.trim() ? (
+            <p className="border-b border-line px-3 py-1.5 text-[11px] text-muted">
+              {matches.length} match{matches.length === 1 ? "" : "es"}
+            </p>
+          ) : null}
+          {shown.map((unit) => {
+            const active = number === unit.number;
+            const detail = [unit.assignedTo, unit.site].filter(Boolean).join(" · ");
+            const meta = [unit.year, unit.make, unit.model].filter(Boolean).join(" ");
+            return (
+              <button
+                key={unit.number}
+                type="button"
+                onClick={() => pick(unit)}
+                className={cn(
+                  "flex w-full flex-col gap-0.5 border-b border-line px-3 py-2.5 text-left last:border-0",
+                  active ? "bg-navy text-primary-foreground" : "hover:bg-paper-2",
+                )}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-sm">{unit.number}</span>
+                  {unit.flags ? (
+                    <span className={cn("text-[10px] font-semibold uppercase tracking-wide", active ? "text-primary-foreground/80" : "text-danger")}>
+                      {unit.flags}
+                    </span>
+                  ) : null}
+                </span>
+                <span className={cn("text-sm", active ? "text-primary-foreground" : "text-ink")}>
+                  {unit.name || "Unit"}
+                  {detail ? (
+                    <span className={cn("font-normal", active ? "text-primary-foreground/75" : "text-muted")}>
+                      {" · "}
+                      {detail}
+                    </span>
+                  ) : null}
+                </span>
+                {meta ? (
+                  <span className={cn("text-[11px]", active ? "text-primary-foreground/70" : "text-subtle")}>{meta}</span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       ) : (
         <p className="text-sm text-muted">
-          {fleet.length
-            ? "No units match that. Add it below so the next guy can find it."
-            : "No equipment directory yet. Add units here or paste the list in Settings."}
+          {query.trim()
+            ? "No units match that. Add it below if it is a new number."
+            : "Type backhoe, a name, or a code. Example: RE0400 · Tundra · Matt Pitsenbarger"}
         </p>
       )}
 

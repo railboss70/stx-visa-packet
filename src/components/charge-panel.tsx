@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { WORK_ORDER_CODES, suggestCodes, woLabel } from "@/lib/cost-codes";
-import { mergeEquipment, normalizeEquipNumber, type EquipUnit } from "@/lib/equipment";
+import { mergeEquipment, normalizeEquipNumber, STX_FLEET, type EquipUnit } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
 import type { AppSettings, Charge, ChargeKind, EquipSuffix } from "@/lib/types";
 import { formatMdY, formatMoney } from "@/lib/utils";
@@ -38,7 +38,7 @@ export function ChargePanel({
         if (n) learned.push({ number: n, name: "", keywords: [] });
       }
     }
-    return mergeEquipment(savedEquip, learned);
+    return mergeEquipment(STX_FLEET, savedEquip, learned);
   }, [savedEquip, reports]);
   const suggestions = useMemo(
     () =>

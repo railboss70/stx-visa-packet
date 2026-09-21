@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/input";
-import { mergeEquipment, parseEquipPaste } from "@/lib/equipment";
+import { mergeEquipment, parseEquipPaste, STX_FLEET } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -77,10 +77,11 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <h2 className="mt-8 font-display text-lg font-semibold text-navy">Equipment directory</h2>
+      <h2 className="mt-8 font-display text-lg font-semibold text-navy">Equipment extras</h2>
       <p className="mt-1 max-w-lg text-sm text-muted">
-        Type backhoe or loader on a charge and these units pop up. Paste one per line:
-        <span className="font-mono text-ink"> FC1400 Backhoe</span>
+        The STX fleet directory ({STX_FLEET.length} units) is already in the app. Add only new
+        units that are not in Tenna yet. Paste one per line:
+        <span className="font-mono text-ink"> NX0100 New Backhoe</span>
       </p>
 
       <div className="mt-4 max-w-lg space-y-3 rounded-xl bg-card p-5 shadow-[var(--shadow-border)]">

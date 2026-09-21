@@ -3,7 +3,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { INDIRECT_CODES, JOB_CODES, WORK_ORDER_CODES, searchCodes } from "@/lib/cost-codes";
-import { mergeEquipment, searchEquipment } from "@/lib/equipment";
+import { STX_FLEET, mergeEquipment, searchEquipment } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
 
 export const Route = createFileRoute("/codes")({ component: CodesPage });
@@ -19,7 +19,7 @@ export function CodesPage() {
         .filter(Boolean)
         .map((number) => ({ number, name: "", keywords: [] })),
     );
-    return mergeEquipment(saved, learned);
+    return mergeEquipment(STX_FLEET, saved, learned);
   }, [saved, reports]);
   const job = useMemo(() => (q ? searchCodes(q, "job") : JOB_CODES), [q]);
   const indirect = useMemo(() => (q ? searchCodes(q, "indirect") : INDIRECT_CODES), [q]);
@@ -35,7 +35,7 @@ export function CodesPage() {
       <p className="mt-1 max-w-xl text-sm text-muted">
         Jobs need a job number plus a field code. Work orders still need the job number, then the
         WO labor / materials / other code so the office knows which job it hits. Equipment posts the
-        unit + R, M, or U — search backhoe or loader to find the unit.
+        unit + R, M, or U — type backhoe, matt truck, or FC0900.
       </p>
       <Input
         className="mt-5 max-w-md"
@@ -44,18 +44,25 @@ export function CodesPage() {
         onChange={(e) => setQ(e.target.value)}
       />
 
-      <Section title="Equipment" note="Unit number plus R / M / U. Add more in Settings.">
+      <Section title="Equipment" note={`${fleet.length} units from the STX fleet directory. Posts as code + R / M / U.`}>
         {equip.length ? (
           <div className="overflow-hidden rounded-lg border border-line bg-card">
-            {equip.map((r) => (
-              <div key={r.number} className="flex gap-3 border-b border-line px-3 py-2 last:border-0">
+            {equip.slice(0, q ? 80 : 40).map((r) => (
+              <div key={r.number} className="flex flex-col gap-0.5 border-b border-line px-3 py-2 last:border-0 sm:flex-row sm:items-baseline sm:gap-3">
                 <span className="w-24 shrink-0 font-mono text-xs tabular-nums text-navy">{r.number}</span>
-                <span className="text-sm">{r.name || "Unit"}</span>
+                <span className="text-sm">
+                  {r.name || "Unit"}
+                  {r.assignedTo ? <span className="text-muted"> · {r.assignedTo}</span> : null}
+                  {r.flags ? <span className="text-danger"> · {r.flags}</span> : null}
+                </span>
               </div>
             ))}
+            {!q && fleet.length > 40 ? (
+              <p className="px-3 py-2 text-xs text-muted">Showing 40 of {fleet.length}. Type to search the rest.</p>
+            ) : null}
           </div>
         ) : (
-          <p className="text-sm text-muted">No equipment saved yet. Add units in Settings.</p>
+          <p className="text-sm text-muted">No units match.</p>
         )}
       </Section>
       <Section title="Job cost codes" note="Use with a 5-digit job number">
