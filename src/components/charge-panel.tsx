@@ -4,6 +4,7 @@ import type { AppSettings, Charge, ChargeKind, EquipSuffix } from "@/lib/types";
 import { formatMdY, formatMoney } from "@/lib/utils";
 import { CodeList, EquipmentCoder, KindToggle, WorkOrderPicker } from "./code-picker";
 import { ReceiptDrop } from "./receipt-drop";
+import { AmountInput } from "./amount-input";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
@@ -79,12 +80,7 @@ export function ChargePanel({
           />
         </Field>
         <Field label="Amount">
-          <Input
-            inputMode="decimal"
-            value={charge.amount ? String(charge.amount) : ""}
-            placeholder="0.00"
-            onChange={(e) => onPatch({ amount: Number(e.target.value) || 0 })}
-          />
+          <AmountInput key={charge.id} value={charge.amount} onChange={(n) => onPatch({ amount: n })} />
         </Field>
       </div>
 

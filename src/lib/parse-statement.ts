@@ -10,8 +10,55 @@ export type ParsedStatement = {
   rawText: string;
 };
 
-const SKIP =
-  /memo item|previous balance|new balance|payment due|minimum payment|finance charge|credit line|available credit|purchases and debits|cash advances|page \d/i;
+const SKIP_VENDOR =
+  /^(credits?|purchases and debits|cash advances|previous balance|new balance|minimum payment|credit line|available credit|finance charge|memo item|payment due|account number|statement closing date|trans|post|purchase date|description|order no\.?|amount)$/i;
+
+const CHARGE_RE =
+  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+-]*?)\s+\$?(-?[\d,]+\.\d{2})/gi;
+
+function extractCharges(text: string): Charge[] {
+  const charges: Charge[] = [];
+  const seen = new Set<string>();
+
+  const ingest = (src: string) => {
+    CHARGE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = CHARGE_RE.exec(src))) {
+      const vendorBlob = m[3]
+        .replace(/\*{3,}[\s\S]*$/, "")
+        .replace(/\bMEMO ITEM\b[\s\S]*$/i, "")
+        .trim();
+      if (!vendorBlob || SKIP_VENDOR.test(vendorBlob)) continue;
+
+      const transDate = withYear(m[1]);
+      const postDate = m[2] ? withYear(m[2], transDate) : transDate;
+      const amount = parseMoney(m[4]);
+      if (!transDate || !amount) continue;
+
+      const { vendor, orderNo } = splitVendor(vendorBlob);
+      if (!vendor || SKIP_VENDOR.test(vendor) || vendor.length < 2) continue;
+
+      const key = `${transDate}|${vendor.toLowerCase()}|${amount.toFixed(2)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      charges.push(
+        emptyCharge({
+          transDate,
+          postDate,
+          vendor,
+          orderNo,
+          amount,
+          description: guessDescription(vendor),
+        }),
+      );
+    }
+  };
+
+  ingest(text);
+  ingest(text.replace(/\s+/g, " "));
+  return charges;
+}
 
 export function parseStatementText(text: string): ParsedStatement {
   const last4 =
@@ -33,74 +80,6 @@ export function parseStatementText(text: string): ParsedStatement {
 
   const charges = extractCharges(text);
   return { employeeName, last4, closingDate, charges, rawText: text };
-}
-
-function extractCharges(text: string): Charge[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-
-  const charges: Charge[] = [];
-  const seen = new Set<string>();
-  const row =
-    /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)?\s*(.+?)\s+\$?(-?[\d,]+\.\d{2})\s*$/;
-
-  for (const line of lines) {
-    if (SKIP.test(line)) continue;
-    const m = line.match(row);
-    if (!m) continue;
-    const vendorBlob = m[3].replace(/\*{3,}.*$/, "").trim();
-    if (!vendorBlob || /^(credits|purchases|amount|description)$/i.test(vendorBlob)) continue;
-
-    const transDate = withYear(m[1]);
-    const postDate = m[2] ? withYear(m[2], transDate) : transDate;
-    const amount = parseMoney(m[4]);
-    if (!transDate || !amount) continue;
-
-    const { vendor, orderNo } = splitVendor(vendorBlob);
-    const key = `${transDate}|${vendor}|${amount}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    charges.push(
-      emptyCharge({
-        transDate,
-        postDate,
-        vendor,
-        orderNo,
-        amount,
-        description: guessDescription(vendor),
-      }),
-    );
-  }
-
-  if (charges.length === 0) {
-    const global =
-      /(\d{1,2}\/\d{1,2})\s+(\d{1,2}\/\d{1,2})\s+([A-Z0-9][A-Z0-9 #*.,'\/&-]+?)\s+\$?([\d,]+\.\d{2})/g;
-    let m: RegExpExecArray | null;
-    while ((m = global.exec(text.replace(/\s+/g, " ")))) {
-      if (SKIP.test(m[0])) continue;
-      const transDate = withYear(m[1]);
-      const amount = parseMoney(m[4]);
-      const { vendor, orderNo } = splitVendor(m[3]);
-      const key = `${transDate}|${vendor}|${amount}`;
-      if (seen.has(key) || !vendor) continue;
-      seen.add(key);
-      charges.push(
-        emptyCharge({
-          transDate,
-          postDate: withYear(m[2], transDate),
-          vendor,
-          orderNo,
-          amount,
-          description: guessDescription(vendor),
-        }),
-      );
-    }
-  }
-
-  return charges;
 }
 
 function splitVendor(raw: string) {
@@ -208,20 +187,54 @@ async function readPageText(page: {
 }) {
   try {
     const content = await page.getTextContent();
-    return content.items
-      .map((item) => (item && typeof item === "object" && "str" in item ? String((item as { str?: string }).str ?? "") : ""))
-      .join(" ");
+    return itemsToLines(content.items);
   } catch {
     if (!page.streamTextContent) return "";
     const reader = page.streamTextContent().getReader();
-    const parts: string[] = [];
+    const items: unknown[] = [];
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
-      for (const item of value?.items ?? []) {
-        if (item.str) parts.push(item.str);
-      }
+      items.push(...(value?.items ?? []));
     }
-    return parts.join(" ");
+    return itemsToLines(items);
   }
+}
+
+function itemsToLines(items: unknown[]) {
+  const rows: { x: number; y: number; str: string }[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as { str?: string; transform?: number[] };
+    const str = rec.str ?? "";
+    if (!str) continue;
+    const x = rec.transform?.[4] ?? 0;
+    const y = rec.transform?.[5] ?? 0;
+    rows.push({ x, y, str });
+  }
+  if (!rows.length) return "";
+  rows.sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines: string[] = [];
+  let currentY = rows[0].y;
+  let buf: { x: number; str: string }[] = [];
+  const flush = () => {
+    if (!buf.length) return;
+    const line = buf
+      .sort((a, b) => a.x - b.x)
+      .map((p) => p.str)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (line) lines.push(line);
+    buf = [];
+  };
+  for (const r of rows) {
+    if (Math.abs(r.y - currentY) > 4) {
+      flush();
+      currentY = r.y;
+    }
+    buf.push(r);
+  }
+  flush();
+  return lines.join("\n");
 }
