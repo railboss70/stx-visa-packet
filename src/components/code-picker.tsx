@@ -14,7 +14,7 @@ import { Label } from "./ui/label";
 
 const KINDS: { id: ChargeKind; title: string; hint: string }[] = [
   { id: "job", title: "Job", hint: "Job # + cost code" },
-  { id: "workOrder", title: "Work order", hint: "WO codes only" },
+  { id: "workOrder", title: "Work order", hint: "Job # + WO code" },
   { id: "equipment", title: "Equipment", hint: "Unit + R / M / U" },
   { id: "indirect", title: "Indirect", hint: "500 / 600 codes" },
 ];

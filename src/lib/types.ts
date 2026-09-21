@@ -87,7 +87,7 @@ export function isCoded(charge: Charge) {
     case "job":
       return Boolean(charge.jobNumber.trim() && charge.costCode);
     case "workOrder":
-      return Boolean(charge.costCode);
+      return Boolean(charge.jobNumber.trim() && charge.costCode);
     case "equipment":
       return Boolean(charge.equipNumber.trim() && charge.equipSuffix);
     case "indirect":
@@ -102,7 +102,7 @@ export function codingDisplay(charge: Charge) {
     return `${charge.equipNumber.trim()}${charge.equipSuffix}`.toUpperCase();
   }
   if (charge.kind === "workOrder") {
-    return charge.costCode ? `${charge.costCode}  ${charge.costLabel}` : "";
+    return [charge.jobNumber, charge.costCode].filter(Boolean).join("  ");
   }
   if (charge.kind === "indirect") {
     return charge.costCode ? `INDIRECT  ${charge.costCode}` : "";

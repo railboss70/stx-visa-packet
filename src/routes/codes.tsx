@@ -19,8 +19,9 @@ export function CodesPage() {
       </Link>
       <h1 className="mt-1 font-display text-2xl font-semibold text-navy">Cost codes</h1>
       <p className="mt-1 max-w-xl text-sm text-muted">
-        Jobs need a job number plus a field code. Work orders use only the WO labor / materials /
-        other code. Equipment charges skip codes and post the unit + R, M, or U.
+        Jobs need a job number plus a field code. Work orders still need the job number, then the
+        WO labor / materials / other code so the office knows which job it hits. Equipment charges
+        skip codes and post the unit + R, M, or U.
       </p>
       <Input
         className="mt-5 max-w-md"
@@ -35,7 +36,7 @@ export function CodesPage() {
       <Section title="Indirect" note="Posts job number INDIRECT">
         <CodeTable rows={indirect} />
       </Section>
-      <Section title="Work orders" note="Labor, materials, and other — no job number">
+      <Section title="Work orders" note="Job number plus labor, materials, or other code">
         <CodeTable rows={wo} />
       </Section>
     </AppShell>

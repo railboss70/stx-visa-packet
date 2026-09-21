@@ -314,12 +314,7 @@ function drawChargeRow(
     charge.kind === "equipment"
       ? `${charge.equipNumber.trim()}${charge.equipSuffix}`.toUpperCase()
       : "";
-  const job =
-    charge.kind === "job" || charge.kind === "indirect"
-      ? charge.jobNumber
-      : charge.kind === "workOrder"
-        ? ""
-        : charge.jobNumber;
+  const job = charge.kind === "equipment" ? "" : charge.jobNumber;
   const code = charge.kind === "equipment" ? "" : charge.costCode;
 
   write(equip, xs.equip, col.equip, "center");

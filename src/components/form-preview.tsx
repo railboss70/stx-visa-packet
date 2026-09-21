@@ -64,7 +64,7 @@ export function FormPreview({ report }: { report: VisaReport }) {
                     : ""}
                 </td>
                 <td className="border border-line px-2 text-center font-mono">
-                  {c && c.kind !== "equipment" && c.kind !== "workOrder" ? c.jobNumber : ""}
+                  {c && c.kind !== "equipment" ? c.jobNumber : ""}
                 </td>
                 <td className="border border-line px-2 text-center font-mono">
                   {c && c.kind !== "equipment" ? c.costCode : ""}

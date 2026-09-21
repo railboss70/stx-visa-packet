@@ -47,7 +47,11 @@ export function ChargePanel({
             {charge.orderNo ? ` · ${charge.orderNo}` : ""}
           </p>
         </div>
-        {charge.kind && charge.costCode ? (
+        {charge.kind === "workOrder" && charge.jobNumber && charge.costCode ? (
+          <Badge tone="ok">
+            {charge.jobNumber} · {charge.costCode}
+          </Badge>
+        ) : charge.kind && charge.costCode ? (
           <Badge tone="ok">{charge.costCode}</Badge>
         ) : charge.kind === "equipment" && charge.equipSuffix ? (
           <Badge tone="ok">
@@ -177,22 +181,31 @@ export function ChargePanel({
       ) : null}
 
       {charge.kind === "workOrder" ? (
-        <WorkOrderPicker
-          woNumber={charge.woNumber}
-          woType={charge.woType}
-          onChange={(wo, type) => {
-            const match = WORK_ORDER_CODES.find((c) => c.woNumber === wo && c.woType === type);
-            onPatch({
-              woNumber: wo,
-              woType: type,
-              costCode: match?.code ?? "",
-              costLabel: match?.label ?? woLabel(wo),
-              jobNumber: "",
-              equipNumber: "",
-              equipSuffix: "",
-            });
-          }}
-        />
+        <div className="space-y-3">
+          <Field label="Job number">
+            <Input
+              value={charge.jobNumber}
+              placeholder="Which job does this WO hit?"
+              className="font-mono"
+              onChange={(e) => onPatch({ jobNumber: e.target.value.replace(/[^\d]/g, "") })}
+            />
+          </Field>
+          <WorkOrderPicker
+            woNumber={charge.woNumber}
+            woType={charge.woType}
+            onChange={(wo, type) => {
+              const match = WORK_ORDER_CODES.find((c) => c.woNumber === wo && c.woType === type);
+              onPatch({
+                woNumber: wo,
+                woType: type,
+                costCode: match?.code ?? "",
+                costLabel: match?.label ?? woLabel(wo),
+                equipNumber: "",
+                equipSuffix: "",
+              });
+            }}
+          />
+        </div>
       ) : null}
 
       {charge.kind === "equipment" ? (
