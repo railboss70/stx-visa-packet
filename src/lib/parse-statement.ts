@@ -85,9 +85,12 @@ export function parseStatementText(text: string): ParsedStatement {
 function splitVendor(raw: string) {
   const cleaned = raw.replace(/\s{2,}/g, " ").replace(/\*{4,}/g, "").trim();
   const order = cleaned.match(/(\d{3}-\d{7,}-\d{4,}|\b\d{10,}\b)/);
-  const vendor = cleaned
+  const withoutOrder = cleaned
     .replace(order?.[0] ?? "", "")
-    .replace(/\s+[A-Z]{2}$/, (st) => (usState(st.trim()) ? "" : st))
+    .replace(/\s+/g, " ")
+    .trim();
+  const vendor = withoutOrder
+    .replace(/\s+([A-Z]{2})$/, (m, st: string) => (usState(st) ? "" : m))
     .replace(/\s+/g, " ")
     .trim();
   return { vendor: titleCase(vendor), orderNo: order?.[0] ?? "" };
