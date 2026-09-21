@@ -14,7 +14,7 @@ const SKIP_VENDOR =
   /^(credits?|purchases and debits|cash advances|previous balance|new balance|minimum payment|credit line|available credit|finance charge|memo item|payment due|account number|statement closing date|trans|post|purchase date|description|order no\.?|amount)$/i;
 
 const CHARGE_RE =
-  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+-]*?)\s+\$?(-?[\d,]+\.\d{2})/gi;
+  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+-]*?)\s+(\(?\$?-?[\d,]+\.\d{2}\)?)/gi;
 
 function extractCharges(text: string): Charge[] {
   const charges: Charge[] = [];
@@ -84,9 +84,8 @@ export function parseStatementText(text: string): ParsedStatement {
 
 function splitVendor(raw: string) {
   const cleaned = raw.replace(/\s{2,}/g, " ").replace(/\*{4,}/g, "").trim();
-  const order = cleaned.match(/(\d{3}-\d{7,}-\d{4,}|\b\d{10,}\b)/);
-  const withoutOrder = cleaned
-    .replace(order?.[0] ?? "", "")
+  const order = cleaned.match(/(\d{3}-\d{7,}-\d{4,}|\d{3}-\d{3}-\d{4}\b|\b\d{10,}\b)/);
+  const withoutOrder = (order ? cleaned.replaceAll(order[0], "") : cleaned)
     .replace(/\s+/g, " ")
     .trim();
   const vendor = withoutOrder
