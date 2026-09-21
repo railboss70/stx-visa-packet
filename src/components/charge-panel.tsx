@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { WORK_ORDER_CODES, suggestCodes, woLabel } from "@/lib/cost-codes";
+import { mergeEquipment, normalizeEquipNumber, type EquipUnit } from "@/lib/equipment";
+import { useVisaStore } from "@/lib/store";
 import type { AppSettings, Charge, ChargeKind, EquipSuffix } from "@/lib/types";
 import { formatMdY, formatMoney } from "@/lib/utils";
 import { CodeList, EquipmentCoder, KindToggle, WorkOrderPicker } from "./code-picker";
@@ -25,6 +27,19 @@ export function ChargePanel({
   onReadReceipt?: (receiptId: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const savedEquip = useVisaStore((s) => s.settings.equipment ?? []);
+  const reports = useVisaStore((s) => s.reports);
+  const updateSettings = useVisaStore((s) => s.updateSettings);
+  const fleet = useMemo(() => {
+    const learned: EquipUnit[] = [];
+    for (const r of reports) {
+      for (const c of r.charges) {
+        const n = normalizeEquipNumber(c.equipNumber);
+        if (n) learned.push({ number: n, name: "", keywords: [] });
+      }
+    }
+    return mergeEquipment(savedEquip, learned);
+  }, [savedEquip, reports]);
   const suggestions = useMemo(
     () =>
       suggestCodes({
@@ -209,9 +224,13 @@ export function ChargePanel({
           number={charge.equipNumber}
           suffix={charge.equipSuffix}
           labels={{ R: settings.suffixR, M: settings.suffixM, U: settings.suffixU }}
+          fleet={fleet}
           onNumber={(v) => onPatch({ equipNumber: v, jobNumber: "", costCode: "", costLabel: "" })}
           onSuffix={(v: EquipSuffix) =>
             onPatch({ equipSuffix: v, jobNumber: "", costCode: "", costLabel: "" })
+          }
+          onSaveUnit={(unit) =>
+            updateSettings({ equipment: mergeEquipment(savedEquip, [unit]) })
           }
         />
       ) : null}

@@ -8,6 +8,13 @@ import {
   type CostCode,
 } from "@/lib/cost-codes";
 import type { ChargeKind, EquipSuffix } from "@/lib/types";
+import {
+  EQUIP_TYPE_CHIPS,
+  keywordsFor,
+  normalizeEquipNumber,
+  searchEquipment,
+  type EquipUnit,
+} from "@/lib/equipment";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -15,7 +22,7 @@ import { Label } from "./ui/label";
 const KINDS: { id: ChargeKind; title: string; hint: string }[] = [
   { id: "job", title: "Job", hint: "Job # + cost code" },
   { id: "workOrder", title: "Work order", hint: "Job # + WO code" },
-  { id: "equipment", title: "Equipment", hint: "Unit + R / M / U" },
+  { id: "equipment", title: "Equipment", hint: "Search unit + R / M / U" },
   { id: "indirect", title: "Indirect", hint: "500 / 600 codes" },
 ];
 
@@ -169,28 +176,122 @@ export function EquipmentCoder({
   number,
   suffix,
   labels,
+  fleet,
   onNumber,
   onSuffix,
+  onSaveUnit,
 }: {
   number: string;
   suffix: EquipSuffix | "";
   labels: { R: string; M: string; U: string };
+  fleet: EquipUnit[];
   onNumber: (v: string) => void;
   onSuffix: (v: EquipSuffix) => void;
+  onSaveUnit: (unit: EquipUnit) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [addNumber, setAddNumber] = useState("");
+  const [addName, setAddName] = useState("");
+  const matches = useMemo(() => searchEquipment(query, fleet), [query, fleet]);
+  const shown = (query ? matches : fleet).slice(0, 20);
+  const selected = fleet.find((u) => u.number === number);
+
+  function pick(unit: EquipUnit) {
+    onNumber(unit.number);
+    setQuery("");
+  }
+
+  function addUnit() {
+    const num = normalizeEquipNumber(addNumber || query || number);
+    const name = addName.trim();
+    if (!num) return;
+    const unit: EquipUnit = { number: num, name, keywords: keywordsFor(name) };
+    onSaveUnit(unit);
+    onNumber(num);
+    setQuery("");
+    setAddNumber("");
+    setAddName("");
+  }
+
   return (
     <div className="space-y-3">
       <div>
-        <Label htmlFor="equip">Equipment number</Label>
+        <Label htmlFor="equip-search">Find equipment</Label>
         <Input
-          id="equip"
-          value={number}
+          id="equip-search"
+          value={query}
           autoCapitalize="characters"
-          placeholder="FC1400"
-          className="mt-1.5 font-mono uppercase"
-          onChange={(e) => onNumber(e.target.value.toUpperCase())}
+          placeholder="backhoe, loader, FC1400…"
+          className="mt-1.5"
+          onChange={(e) => setQuery(e.target.value)}
         />
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {EQUIP_TYPE_CHIPS.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => setQuery(chip)}
+              className={cn(
+                "rounded-sm border px-2 py-1 text-xs",
+                query.toLowerCase() === chip.toLowerCase()
+                  ? "border-navy bg-navy text-primary-foreground"
+                  : "border-line bg-card text-muted hover:bg-paper-2",
+              )}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {shown.length ? (
+        <div className="max-h-56 overflow-y-auto rounded-lg border border-line bg-card">
+          {shown.map((unit) => (
+            <button
+              key={unit.number}
+              type="button"
+              onClick={() => pick(unit)}
+              className={cn(
+                "flex w-full items-center justify-between gap-3 border-b border-line px-3 py-2.5 text-left last:border-0",
+                number === unit.number ? "bg-navy text-primary-foreground" : "hover:bg-paper-2",
+              )}
+            >
+              <span className="font-mono text-sm">{unit.number}</span>
+              <span className={cn("text-sm", number === unit.number ? "text-primary-foreground/80" : "text-muted")}>
+                {unit.name || "Unit"}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted">
+          {fleet.length
+            ? "No units match that. Add it below so the next guy can find it."
+            : "No equipment directory yet. Add units here or paste the list in Settings."}
+        </p>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <Input
+          value={addNumber}
+          placeholder="Unit number"
+          className="font-mono uppercase"
+          onChange={(e) => setAddNumber(normalizeEquipNumber(e.target.value))}
+        />
+        <Input
+          value={addName}
+          placeholder="Backhoe, loader…"
+          onChange={(e) => setAddName(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={addUnit}
+          className="h-10 rounded-md border border-line bg-card px-3 text-sm font-medium hover:bg-paper-2"
+        >
+          Save unit
+        </button>
+      </div>
+
       <div className="grid grid-cols-3 gap-2">
         {(["R", "M", "U"] as EquipSuffix[]).map((s) => (
           <button
@@ -214,6 +315,7 @@ export function EquipmentCoder({
       {number && suffix ? (
         <p className="font-mono text-sm text-navy">
           Posts as <span className="font-semibold">{number.trim()}{suffix}</span>
+          {selected?.name ? <span className="font-sans text-muted"> · {selected.name}</span> : null}
         </p>
       ) : null}
     </div>

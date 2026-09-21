@@ -46,6 +46,7 @@ export type AppSettings = {
   suffixR: string;
   suffixM: string;
   suffixU: string;
+  equipment: { number: string; name: string; keywords: string[] }[];
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   suffixR: "Repair",
   suffixM: "Maintenance",
   suffixU: "Use",
+  equipment: [],
 };
 
 export function emptyCharge(partial: Partial<Charge> = {}): Charge {
