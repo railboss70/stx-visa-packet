@@ -1,7 +1,7 @@
 /**
- * Safari still does not implement ReadableStream async iteration.
- * pdf.js 6 uses `for await (... of stream)` in getTextContent(), which
- * throws "undefined is not a function (near '...e of t...')" on iPhone.
+ * Safari still does not implement ReadableStream async iteration,
+ * and older WebKit is missing Promise.withResolvers.
+ * pdf.js 6 needs both.
  */
 export function polyfillReadableStreamAsyncIterator() {
   if (typeof ReadableStream === "undefined") return;
@@ -33,4 +33,26 @@ export function polyfillReadableStreamAsyncIterator() {
   });
 }
 
-polyfillReadableStreamAsyncIterator();
+export function polyfillSafariPdfApis() {
+  polyfillReadableStreamAsyncIterator();
+  const PromiseCtor = Promise as PromiseConstructor & {
+    withResolvers?: <T>() => {
+      promise: Promise<T>;
+      resolve: (value: T | PromiseLike<T>) => void;
+      reject: (reason?: unknown) => void;
+    };
+  };
+  if (typeof PromiseCtor.withResolvers !== "function") {
+    PromiseCtor.withResolvers = function withResolvers<T>() {
+      let resolve!: (value: T | PromiseLike<T>) => void;
+      let reject!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    };
+  }
+}
+
+polyfillSafariPdfApis();

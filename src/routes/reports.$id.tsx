@@ -74,7 +74,7 @@ export function ReportPage() {
       updateReport(id, { statementName: file.name, statementDataUrl: dataUrl });
       let text = "";
       try {
-        text = await extractPdfText(file);
+        text = await extractPdfText(file, dataUrl);
       } catch (err) {
         console.warn("statement text extract failed", err);
         setError("Statement is attached. Couldn’t auto-read the charges — add them by hand.");

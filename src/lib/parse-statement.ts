@@ -1,6 +1,6 @@
 import { emptyCharge, type Charge } from "./types";
 import { parseLooseDate, parseMoney } from "./utils";
-import { polyfillReadableStreamAsyncIterator } from "./stream-async-iterator";
+import { polyfillSafariPdfApis } from "./stream-async-iterator";
 
 export type ParsedStatement = {
   employeeName: string;
@@ -138,9 +138,9 @@ function guessDescription(vendor: string) {
   return "";
 }
 
-export async function extractPdfText(file: Blob) {
-  polyfillReadableStreamAsyncIterator();
-  const pdf = await loadPdf(file);
+export async function extractPdfText(file: Blob, dataUrl?: string) {
+  polyfillSafariPdfApis();
+  const pdf = await loadPdf(file, dataUrl);
   const pages: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -149,9 +149,9 @@ export async function extractPdfText(file: Blob) {
   return pages.join("\n");
 }
 
-export async function renderPdfPages(file: Blob, maxPages = 3, scale = 1.35) {
-  polyfillReadableStreamAsyncIterator();
-  const pdf = await loadPdf(file);
+export async function renderPdfPages(file: Blob, maxPages = 3, scale = 1.35, dataUrl?: string) {
+  polyfillSafariPdfApis();
+  const pdf = await loadPdf(file, dataUrl);
   const out: string[] = [];
   const count = Math.min(pdf.numPages, maxPages);
   for (let i = 1; i <= count; i++) {
@@ -168,35 +168,60 @@ export async function renderPdfPages(file: Blob, maxPages = 3, scale = 1.35) {
   return out;
 }
 
-async function loadPdf(file: Blob) {
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
-  const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  GlobalWorkerOptions.workerSrc = worker;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  return getDocument({
+async function loadPdf(file: Blob, dataUrl?: string) {
+  polyfillSafariPdfApis();
+  const pdfjs = await import("pdfjs-dist");
+  // Load the worker onto this thread so iPhone Safari never uses a module Worker
+  // (getTextContent's for-await on a worker stream is what was blowing up).
+  // @ts-expect-error pdfjs worker has no types
+  const workerMod = await import("pdfjs-dist/build/pdf.worker.min.mjs");
+  (globalThis as unknown as { pdfjsWorker?: unknown }).pdfjsWorker = workerMod;
+
+  const bytes = await blobToBytes(file, dataUrl);
+  return pdfjs.getDocument({
     data: bytes.slice(),
     disableRange: true,
     disableStream: true,
     isOffscreenCanvasSupported: false,
+    useWasm: false,
+    useWorkerFetch: false,
   }).promise;
 }
 
+async function blobToBytes(file: Blob, dataUrl?: string) {
+  if (dataUrl && dataUrl.includes(",")) {
+    try {
+      const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      if (bytes.length > 100) return bytes;
+    } catch {
+      /* fall through to the File */
+    }
+  }
+  return new Uint8Array(await file.arrayBuffer());
+}
+
 async function readPageText(page: {
+  streamTextContent?: (params?: object) => ReadableStream<{ items?: unknown[]; lang?: string; styles?: unknown }>;
   getTextContent: () => Promise<{ items: unknown[] }>;
-  streamTextContent?: () => ReadableStream<{ items?: Array<{ str?: string }> }>;
 }) {
+  const items: unknown[] = [];
+  const stream = page.streamTextContent?.({ includeMarkedContent: false, disableNormalization: true });
+  if (stream && typeof stream.getReader === "function") {
+    const reader = stream.getReader();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value?.items?.length) items.push(...value.items);
+    }
+    if (items.length) return itemsToLines(items);
+  }
   try {
     const content = await page.getTextContent();
     return itemsToLines(content.items);
   } catch {
-    if (!page.streamTextContent) return "";
-    const reader = page.streamTextContent().getReader();
-    const items: unknown[] = [];
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      items.push(...(value?.items ?? []));
-    }
     return itemsToLines(items);
   }
 }
