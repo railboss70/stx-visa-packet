@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BookOpen, Settings } from "lucide-react";
 import type { ReactNode } from "react";
+import { useVisaStore } from "@/lib/store";
 import { StxMark } from "./stx-mark";
 
 export function AppShell({
@@ -10,6 +11,9 @@ export function AppShell({
   children: ReactNode;
   actions?: ReactNode;
 }) {
+  const saveError = useVisaStore((s) => s.saveError);
+  const clearSaveError = useVisaStore((s) => s.clearSaveError);
+
   return (
     <div className="min-h-dvh bg-paper text-ink">
       <header
@@ -45,6 +49,16 @@ export function AppShell({
           </div>
         </div>
       </header>
+      {saveError ? (
+        <div className="border-b border-danger/30 bg-danger px-4 py-2.5 text-sm text-primary-foreground">
+          <div className="mx-auto flex max-w-6xl items-start justify-between gap-3">
+            <p>{saveError}</p>
+            <button type="button" className="shrink-0 text-xs underline" onClick={clearSaveError}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ) : null}
       <main
         className="mx-auto max-w-6xl py-6"
         style={{

@@ -30,7 +30,9 @@ export function SettingsPage() {
       <h1 className="mt-1 font-display text-2xl font-semibold text-navy">Defaults</h1>
       <p className="mt-1 max-w-lg text-sm text-muted">
         Used on every new week. Equipment suffixes post as the unit number plus the letter — FC1400R.
-        Change the labels if your shop uses different words.
+        Change the labels if your shop uses different words. Packets now save in a larger phone
+        store, so a few weeks of statements and receipts should fit. Weeks already on this phone
+        move over automatically the first time you open the new version.
       </p>
 
       <div className="mt-6 max-w-lg space-y-4 rounded-xl bg-card p-5 shadow-[var(--shadow-border)]">

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { onVisaSaveError, visaIdbStorage, VISA_PERSIST_NAME } from "./idb-storage";
 import {
   DEFAULT_SETTINGS,
   emptyCharge,
@@ -12,9 +13,11 @@ import { uid } from "./utils";
 
 type Store = {
   hydrated: boolean;
+  saveError: string;
   settings: AppSettings;
   reports: VisaReport[];
   setHydrated: () => void;
+  clearSaveError: () => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   createReport: (seed?: Partial<VisaReport>) => VisaReport;
   duplicateReport: (id: string) => VisaReport | null;
@@ -34,9 +37,11 @@ export const useVisaStore = create<Store>()(
   persist(
     (set, get) => ({
       hydrated: false,
+      saveError: "",
       settings: DEFAULT_SETTINGS,
       reports: [],
       setHydrated: () => set({ hydrated: true }),
+      clearSaveError: () => set({ saveError: "" }),
       updateSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...patch } })),
       createReport: (seed) => {
@@ -135,7 +140,8 @@ export const useVisaStore = create<Store>()(
         })),
     }),
     {
-      name: "stx-visa-packet",
+      name: VISA_PERSIST_NAME,
+      storage: visaIdbStorage,
       partialize: (s) => ({ settings: s.settings, reports: s.reports }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as { settings?: AppSettings; reports?: VisaReport[] };
@@ -150,12 +156,22 @@ export const useVisaStore = create<Store>()(
           reports: Array.isArray(p.reports) ? p.reports : current.reports,
         };
       },
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          useVisaStore.setState({
+            saveError:
+              "Could not load saved packets. If this keeps happening, delete an old week and reopen the app.",
+          });
+        }
         state?.setHydrated();
       },
     },
   ),
 );
+
+onVisaSaveError((message) => {
+  useVisaStore.setState({ saveError: message });
+});
 
 export function useReport(id: string | undefined) {
   return useVisaStore((s) => s.reports.find((r) => r.id === id));
