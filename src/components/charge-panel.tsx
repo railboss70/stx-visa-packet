@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { WORK_ORDER_CODES, suggestCodes, woLabel } from "@/lib/cost-codes";
 import { EMPTY_EQUIP, mergeEquipment, normalizeEquipNumber, STX_FLEET, type EquipUnit } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
-import type { AppSettings, Charge, ChargeKind, EquipSuffix } from "@/lib/types";
+import { missingCodingFields, type AppSettings, type Charge, type ChargeKind, type EquipSuffix } from "@/lib/types";
 import { formatMdY, formatMoney } from "@/lib/utils";
 import { CodeList, EquipmentCoder, KindToggle, WorkOrderPicker } from "./code-picker";
 import { ReceiptDrop } from "./receipt-drop";
@@ -51,6 +51,7 @@ export function ChargePanel({
       }),
     [charge.description, charge.vendor, charge.kind],
   );
+  const missingCoding = useMemo(() => missingCodingFields(charge), [charge]);
 
   return (
     <div className="space-y-5">
@@ -67,7 +68,9 @@ export function ChargePanel({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {charge.amount < 0 ? <Badge tone="navy">Credit</Badge> : null}
-          {charge.kind === "workOrder" && charge.jobNumber && charge.costCode ? (
+          {missingCoding.length ? (
+            <Badge tone="warn">Needs {missingCoding.join(" + ")}</Badge>
+          ) : charge.kind === "workOrder" && charge.jobNumber && charge.costCode ? (
             <Badge tone="ok">
               {charge.jobNumber} · {charge.costCode}
             </Badge>

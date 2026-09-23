@@ -1,8 +1,9 @@
-import { Camera, FileUp, Trash2, Sparkles } from "lucide-react";
+import { Camera, Crop, FileUp, Trash2, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import type { Receipt } from "@/lib/types";
 import { compressImage, extFromMime, uid } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { ReceiptCropper } from "./receipt-cropper";
 
 export function ReceiptDrop({
   receipts,
@@ -20,6 +21,8 @@ export function ReceiptDrop({
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+  const [cropId, setCropId] = useState<string | null>(null);
+  const cropTarget = cropId ? receipts.find((r) => r.id === cropId) : null;
 
   async function ingest(files: FileList | File[]) {
     const list = Array.from(files);
@@ -124,6 +127,17 @@ export function ReceiptDrop({
             <p className="truncate text-sm">{r.name}</p>
             <p className="text-xs text-muted">Stays full-page in the packet</p>
           </div>
+          {r.mime.startsWith("image/") ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Crop receipt"
+              onClick={() => setCropId(r.id)}
+            >
+              <Crop />
+            </Button>
+          ) : null}
           {onRead && r.mime.startsWith("image/") ? (
             <Button
               type="button"
@@ -147,6 +161,21 @@ export function ReceiptDrop({
           </Button>
         </div>
       ))}
+      {cropTarget ? (
+        <ReceiptCropper
+          open
+          dataUrl={cropTarget.dataUrl}
+          onCancel={() => setCropId(null)}
+          onConfirm={(croppedDataUrl) => {
+            onChange(
+              receipts.map((x) =>
+                x.id === cropTarget.id ? { ...x, dataUrl: croppedDataUrl, mime: "image/jpeg" } : x,
+              ),
+            );
+            setCropId(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

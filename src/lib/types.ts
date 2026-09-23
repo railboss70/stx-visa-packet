@@ -115,6 +115,24 @@ export function codingDisplay(charge: Charge) {
   return "";
 }
 
+/** Which specific coding fields are still missing on this charge, e.g. ["job #", "cost code"]. */
+export function missingCodingFields(charge: Charge): string[] {
+  if (!charge.kind) return ["coding (job, work order, equipment, or indirect)"];
+  if (charge.kind === "equipment") {
+    const missing: string[] = [];
+    if (!charge.equipNumber.trim()) missing.push("equipment #");
+    if (!charge.equipSuffix) missing.push("repair/maintenance/use");
+    return missing;
+  }
+  if (charge.kind === "indirect") {
+    return charge.costCode ? [] : ["cost code"];
+  }
+  const missing: string[] = [];
+  if (!charge.jobNumber.trim()) missing.push("job #");
+  if (!charge.costCode) missing.push("cost code");
+  return missing;
+}
+
 export function packetFileName(report: VisaReport) {
   const ymd = report.weekEnding.replaceAll("-", "").slice(2);
   return `${ymd || "visa"} Visa Summary.pdf`;

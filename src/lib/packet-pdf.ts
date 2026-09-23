@@ -1,5 +1,5 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { isCoded, reportTotal, type Charge, type VisaReport } from "./types";
+import { codingDisplay, isCoded, missingCodingFields, reportTotal, type Charge, type VisaReport } from "./types";
 import { assetUrl, dataUrlToUint8, formatMdY, formatMoney } from "./utils";
 
 const NAVY = rgb(0.071, 0.208, 0.357);
@@ -391,10 +391,11 @@ async function drawReceiptPage(
   }
 
   const page = doc.addPage(PORTRAIT);
+  const coding = charge ? codingDisplay(charge) : "";
   const caption = charge
-    ? `RECEIPT  ·  ${charge.vendor}  ·  ${charge.transDate ? formatMdY(charge.transDate) : ""}  ·  ${formatMoney(charge.amount)}${charge.description ? `  ·  ${charge.description}` : ""}`
+    ? `RECEIPT  ·  ${charge.vendor}  ·  ${charge.transDate ? formatMdY(charge.transDate) : ""}  ·  ${formatMoney(charge.amount)}${coding ? `  ·  ${coding}` : ""}${charge.description ? `  ·  ${charge.description}` : ""}`
     : name;
-  page.drawText(caption.slice(0, 110), {
+  page.drawText(fit(fonts.bold, caption, 9, 540), {
     x: 36,
     y: 760,
     size: 9,
@@ -435,10 +436,14 @@ async function drawReceiptPage(
 
 export function missingPacketNotes(report: VisaReport) {
   const notes: string[] = [];
-  const uncoded = report.charges.filter((c) => !isCoded(c));
-  if (uncoded.length) notes.push(`${uncoded.length} charge${uncoded.length === 1 ? "" : "s"} still need coding`);
-  const noReceipt = report.charges.filter((c) => c.receipts.length === 0);
-  if (noReceipt.length) notes.push(`${noReceipt.length} missing receipt${noReceipt.length === 1 ? "" : "s"}`);
+  report.charges.forEach((c, i) => {
+    const label = c.vendor.trim() || (c.transDate ? formatMdY(c.transDate) : `Charge #${i + 1}`);
+    if (!isCoded(c)) {
+      const missing = missingCodingFields(c);
+      notes.push(missing.length ? `${label}: missing ${missing.join(", ")}` : `${label}: needs coding`);
+    }
+    if (c.receipts.length === 0) notes.push(`${label}: missing receipt`);
+  });
   if (!report.weekEnding) notes.push("Week ending date is blank");
   if (!report.employeeName) notes.push("Employee name is blank");
   if (!report.last4) notes.push("Last 4 of card is blank");
