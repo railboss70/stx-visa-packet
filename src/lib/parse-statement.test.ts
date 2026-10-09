@@ -34,6 +34,19 @@ test("still pulls a long reference sitting between vendor and state", () => {
   assert.equal(parsed.charges[0].orderNo, "12345678901");
 });
 
+test("reads dash-before-dollar, trailing CR, and trailing-minus credits as negative", () => {
+  const parsed = parseStatementText(
+    `${HEADER}08/01 08/02 SHELL OIL FAIRBURN GA -$12.50
+08/03 08/04 HOME DEPOT #1034 GA 18.00 CR
+08/05 08/06 LOWES #0182 AL 9.99-
+`,
+  );
+  assert.equal(parsed.charges.length, 3);
+  assert.equal(parsed.charges[0].amount, -12.5);
+  assert.equal(parsed.charges[1].amount, -18);
+  assert.equal(parsed.charges[2].amount, -9.99);
+});
+
 test("reads a parenthesized credit instead of dropping the line", () => {
   const parsed = parseStatementText(
     `${HEADER}07/22 07/23 HOME DEPOT #1034 GA ($45.00)\n`,

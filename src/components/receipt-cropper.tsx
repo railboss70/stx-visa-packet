@@ -35,9 +35,11 @@ export function ReceiptCropper({
   onCancel: () => void;
   onConfirm: (croppedDataUrl: string) => void;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
   const [rect, setRect] = useState<Rect>(DEFAULT_RECT);
   const dragRef = useRef<{ mode: DragMode; startX: number; startY: number; start: Rect } | null>(null);
 
@@ -45,10 +47,35 @@ export function ReceiptCropper({
     if (!open) return;
     setRect(DEFAULT_RECT);
     setNatural(null);
+    setBox(null);
     const img = new Image();
     img.onload = () => setNatural({ w: img.naturalWidth, h: img.naturalHeight });
     img.src = dataUrl;
   }, [open, dataUrl]);
+
+  // Size the stage to the rendered photo in px so crop fractions map 1:1.
+  // A height cap plus aspect-ratio was letterboxing tall phone photos.
+  useEffect(() => {
+    if (!open || !natural) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const compute = () => {
+      const availW = wrap.clientWidth;
+      const availH = window.innerHeight * 0.6;
+      const scale = Math.min(availW / natural.w, availH / natural.h);
+      setBox({ w: Math.max(1, Math.round(natural.w * scale)), h: Math.max(1, Math.round(natural.h * scale)) });
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(wrap);
+    window.addEventListener("resize", compute);
+    window.addEventListener("orientationchange", compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("orientationchange", compute);
+    };
+  }, [open, natural]);
 
   function pointFromEvent(e: ReactPointerEvent) {
     const stage = stageRef.current;
@@ -134,53 +161,55 @@ export function ReceiptCropper({
       <DialogContent className="max-w-xl">
         <DialogTitle>Crop receipt</DialogTitle>
         <DialogDescription>Drag the corner dots so just the receipt is inside the box.</DialogDescription>
-        <div
-          ref={stageRef}
-          className="relative mx-auto max-h-[60vh] w-full touch-none select-none overflow-hidden rounded-md bg-paper-2"
-          style={{ aspectRatio: natural ? `${natural.w} / ${natural.h}` : "3 / 4" }}
-        >
-          <img
-            ref={imgRef}
-            src={dataUrl}
-            alt="Receipt to crop"
-            className="pointer-events-none absolute inset-0 size-full object-contain"
-            draggable={false}
-          />
-          {natural ? (
-            <div
-              onPointerDown={beginDrag("move")}
-              onPointerMove={onDragMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              className="absolute cursor-move border-2 border-white"
-              style={{
-                left: `${rect.x * 100}%`,
-                top: `${rect.y * 100}%`,
-                width: `${rect.w * 100}%`,
-                height: `${rect.h * 100}%`,
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
-              }}
-            >
-              {HANDLES.map((h) => (
-                <div
-                  key={h.id}
-                  onPointerDown={beginDrag(h.id)}
-                  onPointerMove={onDragMove}
-                  onPointerUp={endDrag}
-                  onPointerCancel={endDrag}
-                  className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none items-center justify-center"
-                  style={{
-                    left: h.left === "x" ? 0 : "100%",
-                    top: h.top === "y" ? 0 : "100%",
-                  }}
-                >
-                  <div className="size-4 rounded-full border-2 border-navy bg-white shadow" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted">Loading…</div>
-          )}
+        <div ref={wrapRef} className="flex max-h-[60vh] w-full items-center justify-center">
+          <div
+            ref={stageRef}
+            className="relative touch-none select-none overflow-hidden rounded-md bg-paper-2"
+            style={box ? { width: box.w, height: box.h } : { width: "100%", height: "60vh" }}
+          >
+            <img
+              ref={imgRef}
+              src={dataUrl}
+              alt="Receipt to crop"
+              className="pointer-events-none absolute inset-0 size-full object-contain"
+              draggable={false}
+            />
+            {natural && box ? (
+              <div
+                onPointerDown={beginDrag("move")}
+                onPointerMove={onDragMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                className="absolute cursor-move border-2 border-white"
+                style={{
+                  left: `${rect.x * 100}%`,
+                  top: `${rect.y * 100}%`,
+                  width: `${rect.w * 100}%`,
+                  height: `${rect.h * 100}%`,
+                  boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
+                }}
+              >
+                {HANDLES.map((h) => (
+                  <div
+                    key={h.id}
+                    onPointerDown={beginDrag(h.id)}
+                    onPointerMove={onDragMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
+                    className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none items-center justify-center"
+                    style={{
+                      left: h.left === "x" ? 0 : "100%",
+                      top: h.top === "y" ? 0 : "100%",
+                    }}
+                  >
+                    <div className="size-4 rounded-full border-2 border-navy bg-white shadow" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted">Loading…</div>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setRect(DEFAULT_RECT)}>
@@ -190,7 +219,7 @@ export function ReceiptCropper({
             <Button type="button" variant="outline" size="sm" onClick={onCancel}>
               <XIcon /> Cancel
             </Button>
-            <Button type="button" size="sm" onClick={confirm} disabled={!natural}>
+            <Button type="button" size="sm" onClick={confirm} disabled={!box}>
               <Check /> Use crop
             </Button>
           </div>

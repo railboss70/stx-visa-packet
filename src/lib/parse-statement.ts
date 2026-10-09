@@ -13,8 +13,10 @@ export type ParsedStatement = {
 const SKIP_VENDOR =
   /^(credits?|purchases and debits|cash advances|previous balance|new balance|minimum payment|credit line|available credit|finance charge|memo item|payment due|account number|statement closing date|trans|post|purchase date|description|order no\.?|amount)$/i;
 
+// Amount group tolerates "$" and "-" in either order ("-$45.00", "$-45.00"),
+// plus a trailing "-" or "CR" marker some statements use for returns/credits.
 const CHARGE_RE =
-  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+-]*?)\s+(\(?\$?-?[\d,]+\.\d{2}\)?)/gi;
+  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+-]*?)\s+(\(?[-$]{0,2}[\d,]+\.\d{2}\)?)(-|\s*CR\.?\b)?/gi;
 
 function extractCharges(text: string): Charge[] {
   const charges: Charge[] = [];
@@ -32,7 +34,7 @@ function extractCharges(text: string): Charge[] {
 
       const transDate = withYear(m[1]);
       const postDate = m[2] ? withYear(m[2], transDate) : transDate;
-      const amount = parseMoney(m[4]);
+      const amount = parseMoney(m[4] + (m[5] ?? ""));
       if (!transDate || !amount) continue;
 
       const { vendor, orderNo } = splitVendor(vendorBlob);

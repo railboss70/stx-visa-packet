@@ -67,7 +67,7 @@ export function fridayOfWeek(iso: string) {
 }
 
 export function parseMoney(raw: string) {
-  const neg = /\(.*\)|-/.test(raw);
+  const neg = /\(.*\)|-|CR\.?$/i.test(raw);
   const n = Number(raw.replace(/[^0-9.]/g, ""));
   if (!Number.isFinite(n)) return 0;
   return neg ? -n : n;
