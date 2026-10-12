@@ -193,20 +193,88 @@ export const WORK_ORDER_NUMBERS = [
   ...Array.from({ length: 20 }, (_, i) => padWo(i + 1)),
 ];
 
-export function findCode(code: string) {
+export function findCode(code: string, pool: CostCode[] = ALL_CODES) {
   const needle = code.trim().toLowerCase();
-  return ALL_CODES.find((c) => c.code.toLowerCase() === needle);
+  return pool.find((c) => c.code.toLowerCase() === needle);
 }
 
-export function searchCodes(query: string, bucket?: CodeBucket) {
+export function searchCodes(query: string, bucket?: CodeBucket, pool: CostCode[] = ALL_CODES) {
   const q = query.trim().toLowerCase();
-  const pool = bucket ? ALL_CODES.filter((c) => c.bucket === bucket) : ALL_CODES;
-  if (!q) return pool;
-  const scored = pool
+  const scoped = bucket ? pool.filter((c) => c.bucket === bucket) : pool;
+  if (!q) return scoped;
+  const scored = scoped
     .map((c) => ({ c, s: scoreCode(c, q) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s);
   return scored.map((x) => x.c);
+}
+
+export const EMPTY_CODES: CostCode[] = [];
+
+export function keywordsFromLabel(label: string) {
+  return label
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+}
+
+/**
+ * Merge built-in codes with user-saved custom codes (and any other code
+ * lists), by bucket + code, later lists winning — same pattern as
+ * mergeEquipment() in equipment.ts.
+ */
+export function mergeCostCodes(...lists: CostCode[][]) {
+  const map = new Map<string, CostCode>();
+  for (const list of lists) {
+    for (const c of list) {
+      const code = c.code.trim();
+      if (!code) continue;
+      const key = `${c.bucket}|${code.toLowerCase()}`;
+      const prev = map.get(key);
+      map.set(key, {
+        code,
+        label: c.label.trim() || prev?.label || code,
+        bucket: c.bucket,
+        keywords: Array.from(new Set([...(prev?.keywords ?? []), ...c.keywords])),
+        woNumber: c.woNumber ?? prev?.woNumber,
+        woType: c.woType ?? prev?.woType,
+      });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    a.code.localeCompare(b.code, undefined, { numeric: true }),
+  );
+}
+
+/** Bulk "paste a list" parser for the Settings cost-code directory, mirroring parseEquipPaste. */
+export function parseCostCodePaste(raw: string, bucket: CodeBucket): CostCode[] {
+  const out: CostCode[] = [];
+  const seen = new Set<string>();
+  for (const line of raw.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const parts = t.split(/[\t,;]+/).map((p) => p.trim()).filter(Boolean);
+    let code = "";
+    let label = "";
+    if (parts.length >= 2) {
+      code = parts[0];
+      label = parts.slice(1).join(" ");
+    } else {
+      const m = t.match(/^(\S+)\s+(.+)$/);
+      if (m) {
+        code = m[1];
+        label = m[2].trim();
+      } else {
+        code = t;
+      }
+    }
+    if (!code) continue;
+    const key = code.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ code, label: label || code, bucket, keywords: keywordsFromLabel(label) });
+  }
+  return out;
 }
 
 function scoreCode(c: CostCode, q: string) {

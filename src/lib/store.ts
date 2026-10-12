@@ -152,6 +152,7 @@ export const useVisaStore = create<Store>()(
             ...DEFAULT_SETTINGS,
             ...(p.settings ?? {}),
             equipment: Array.isArray(p.settings?.equipment) ? p.settings.equipment : [],
+            customCostCodes: Array.isArray(p.settings?.customCostCodes) ? p.settings.customCostCodes : [],
           },
           reports: Array.isArray(p.reports) ? p.reports : current.reports,
         };

@@ -1,3 +1,5 @@
+import type { CostCode } from "./cost-codes";
+
 export type ChargeKind = "job" | "workOrder" | "equipment" | "indirect";
 
 export type EquipSuffix = "R" | "M" | "U";
@@ -47,6 +49,7 @@ export type AppSettings = {
   suffixM: string;
   suffixU: string;
   equipment: { number: string; name: string; keywords: string[] }[];
+  customCostCodes: CostCode[];
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -56,6 +59,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   suffixM: "Maintenance",
   suffixU: "Use",
   equipment: [],
+  customCostCodes: [],
 };
 
 export function emptyCharge(partial: Partial<Charge> = {}): Charge {

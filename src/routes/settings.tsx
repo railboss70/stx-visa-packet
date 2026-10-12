@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/input";
 import { mergeEquipment, parseEquipPaste, STX_FLEET } from "@/lib/equipment";
+import { mergeCostCodes, parseCostCodePaste, type CodeBucket, type CostCode } from "@/lib/cost-codes";
 import { useVisaStore } from "@/lib/store";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -20,6 +21,16 @@ export function SettingsPage() {
 
   function saveFleet(next: typeof fleet) {
     updateSettings({ equipment: mergeEquipment(next) });
+  }
+
+  const [codePaste, setCodePaste] = useState("");
+  const [codeBucket, setCodeBucket] = useState<CodeBucket>("job");
+  const [addCode, setAddCode] = useState("");
+  const [addCodeLabel, setAddCodeLabel] = useState("");
+  const customCodes = settings.customCostCodes ?? [];
+
+  function saveCodes(next: CostCode[]) {
+    updateSettings({ customCostCodes: mergeCostCodes(next) });
   }
 
   return (
@@ -148,6 +159,117 @@ export function SettingsPage() {
                   type="button"
                   className="text-xs text-muted hover:text-danger"
                   onClick={() => saveFleet(fleet.filter((x) => x.number !== u.number))}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted">Nothing saved yet.</p>
+        )}
+      </div>
+
+      <h2 className="mt-8 font-display text-lg font-semibold text-navy">Cost codes</h2>
+      <p className="mt-1 max-w-lg text-sm text-muted">
+        Add a code here if it's not in the app yet — then it shows up when you search for it on a
+        charge. (You can also just type a new code straight into a charge's Cost code box and use
+        "Use this code" there — it gets saved here automatically either way.)
+      </p>
+
+      <div className="mt-4 max-w-lg space-y-3 rounded-xl bg-card p-5 shadow-[var(--shadow-border)]">
+        <div className="flex gap-1.5">
+          {(["job", "indirect"] as const).map((b) => (
+            <button
+              key={b}
+              type="button"
+              onClick={() => setCodeBucket(b)}
+              className={`h-9 rounded-md border px-3 text-sm font-medium ${
+                codeBucket === b
+                  ? "border-navy bg-navy text-primary-foreground"
+                  : "border-line bg-paper text-muted hover:bg-paper-2"
+              }`}
+            >
+              {b === "job" ? "Job" : "Indirect"}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <Input
+            value={addCode}
+            placeholder="61111"
+            className="font-mono"
+            onChange={(e) => setAddCode(e.target.value)}
+          />
+          <Input
+            value={addCodeLabel}
+            placeholder="What it's for"
+            onChange={(e) => setAddCodeLabel(e.target.value)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (!addCode.trim()) return;
+              saveCodes([
+                ...customCodes,
+                {
+                  code: addCode.trim(),
+                  label: addCodeLabel.trim() || addCode.trim(),
+                  bucket: codeBucket,
+                  keywords: [],
+                },
+              ]);
+              setAddCode("");
+              setAddCodeLabel("");
+            }}
+          >
+            Add
+          </Button>
+        </div>
+        <label className="block space-y-1.5">
+          <Label>Paste a list (as {codeBucket === "job" ? "Job" : "Indirect"} codes)</Label>
+          <Textarea
+            value={codePaste}
+            placeholder={"61111 New fuel code\n500.900 Shop supplies"}
+            className="min-h-28 font-mono text-xs"
+            onChange={(e) => setCodePaste(e.target.value)}
+          />
+        </label>
+        <Button
+          type="button"
+          onClick={() => {
+            const parsed = parseCostCodePaste(codePaste, codeBucket);
+            if (!parsed.length) return;
+            saveCodes([...customCodes, ...parsed]);
+            setCodePaste("");
+          }}
+        >
+          Load pasted codes
+        </Button>
+
+        {customCodes.length ? (
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-line">
+            {mergeCostCodes(customCodes).map((c) => (
+              <div
+                key={`${c.bucket}|${c.code}`}
+                className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 last:border-0"
+              >
+                <div>
+                  <div className="font-mono text-sm text-navy">
+                    {c.code}{" "}
+                    <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-muted">
+                      {c.bucket === "indirect" ? "Indirect" : "Job"}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted">{c.label || "Cost code"}</div>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs text-muted hover:text-danger"
+                  onClick={() =>
+                    saveCodes(customCodes.filter((x) => !(x.code === c.code && x.bucket === c.bucket)))
+                  }
                 >
                   Remove
                 </button>

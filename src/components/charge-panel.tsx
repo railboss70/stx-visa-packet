@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { WORK_ORDER_CODES, suggestCodes, woLabel } from "@/lib/cost-codes";
+import { ALL_CODES, EMPTY_CODES, WORK_ORDER_CODES, mergeCostCodes, suggestCodes, woLabel } from "@/lib/cost-codes";
 import { EMPTY_EQUIP, mergeEquipment, normalizeEquipNumber, STX_FLEET, type EquipUnit } from "@/lib/equipment";
 import { useVisaStore } from "@/lib/store";
 import { missingCodingFields, type AppSettings, type Charge, type ChargeKind, type EquipSuffix } from "@/lib/types";
@@ -30,6 +30,7 @@ export function ChargePanel({
 }) {
   const [query, setQuery] = useState("");
   const savedEquip = useVisaStore((s) => s.settings.equipment) ?? EMPTY_EQUIP;
+  const savedCodes = useVisaStore((s) => s.settings.customCostCodes) ?? EMPTY_CODES;
   const reports = useVisaStore((s) => s.reports);
   const updateSettings = useVisaStore((s) => s.updateSettings);
   const fleet = useMemo(() => {
@@ -42,6 +43,10 @@ export function ChargePanel({
     }
     return mergeEquipment(STX_FLEET, savedEquip, learned);
   }, [savedEquip, reports]);
+  const codePool = useMemo(() => mergeCostCodes(ALL_CODES, savedCodes), [savedCodes]);
+  function addCustomCode(code: (typeof savedCodes)[number]) {
+    updateSettings({ customCostCodes: mergeCostCodes(savedCodes, [code]) });
+  }
   const suggestions = useMemo(
     () =>
       suggestCodes({
@@ -180,10 +185,12 @@ export function ChargePanel({
             bucket="job"
             query={query || charge.costCode}
             selected={charge.costCode}
+            pool={codePool}
             onSelect={(c) => {
               onPatch({ costCode: c.code, costLabel: c.label });
               setQuery("");
             }}
+            onAddCode={addCustomCode}
           />
         </div>
       ) : null}
@@ -201,6 +208,7 @@ export function ChargePanel({
             bucket="indirect"
             query={query || charge.costCode}
             selected={charge.costCode}
+            pool={codePool}
             onSelect={(c) => {
               onPatch({
                 costCode: c.code,
@@ -209,6 +217,7 @@ export function ChargePanel({
               });
               setQuery("");
             }}
+            onAddCode={addCustomCode}
           />
         </div>
       ) : null}

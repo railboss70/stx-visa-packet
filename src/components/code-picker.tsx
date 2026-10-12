@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import {
+  ALL_CODES,
   INDIRECT_CODES,
   JOB_CODES,
   WORK_ORDER_CODES,
+  keywordsFromLabel,
   searchCodes,
   woLabel,
   type CostCode,
@@ -64,38 +66,82 @@ export function CodeList({
   bucket,
   query,
   selected,
+  pool = ALL_CODES,
   onSelect,
+  onAddCode,
 }: {
   bucket: "job" | "indirect";
   query: string;
   selected?: string;
+  /** Searchable code pool — pass a merged built-in + custom-codes list so write-ins show up too. */
+  pool?: CostCode[];
   onSelect: (code: CostCode) => void;
+  /** Called (in addition to onSelect) when the typed text is used to create a brand-new code. */
+  onAddCode?: (code: CostCode) => void;
 }) {
+  const [label, setLabel] = useState("");
   const list = useMemo(() => {
-    const found = searchCodes(query, bucket);
+    const found = searchCodes(query, bucket, pool);
     return found.slice(0, 40);
-  }, [bucket, query]);
+  }, [bucket, query, pool]);
+
+  const trimmed = query.trim();
+  const exact = trimmed
+    ? pool.find((c) => c.bucket === bucket && c.code.toLowerCase() === trimmed.toLowerCase())
+    : undefined;
+
+  function addNew() {
+    if (!trimmed || exact) return;
+    const code: CostCode = { code: trimmed, label: label.trim() || trimmed, bucket, keywords: keywordsFromLabel(label) };
+    onAddCode?.(code);
+    onSelect(code);
+    setLabel("");
+  }
 
   return (
-    <div className="max-h-56 overflow-auto rounded-md border border-line bg-card">
-      {list.length === 0 ? (
-        <p className="px-3 py-4 text-sm text-muted">No codes match.</p>
-      ) : (
-        list.map((c) => (
-          <button
-            key={c.code}
-            type="button"
-            onClick={() => onSelect(c)}
-            className={cn(
-              "flex w-full items-baseline gap-3 border-b border-line px-3 py-2 text-left last:border-0",
-              selected === c.code ? "bg-navy text-primary-foreground" : "hover:bg-paper-2",
-            )}
-          >
-            <span className="font-mono text-xs tabular-nums">{c.code}</span>
-            <span className="text-sm">{c.label}</span>
-          </button>
-        ))
-      )}
+    <div className="space-y-2">
+      <div className="max-h-56 overflow-auto rounded-md border border-line bg-card">
+        {list.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted">No codes match.</p>
+        ) : (
+          list.map((c) => (
+            <button
+              key={c.code}
+              type="button"
+              onClick={() => onSelect(c)}
+              className={cn(
+                "flex w-full items-baseline gap-3 border-b border-line px-3 py-2 text-left last:border-0",
+                selected === c.code ? "bg-navy text-primary-foreground" : "hover:bg-paper-2",
+              )}
+            >
+              <span className="font-mono text-xs tabular-nums">{c.code}</span>
+              <span className="text-sm">{c.label}</span>
+            </button>
+          ))
+        )}
+      </div>
+      {onAddCode && trimmed && !exact ? (
+        <div className="space-y-2 rounded-md border border-dashed border-line-strong bg-paper-2 p-3">
+          <p className="text-xs text-muted">
+            <span className="font-mono text-ink">{trimmed}</span> isn't in the list yet. Use it as a new
+            code?
+          </p>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <Input
+              value={label}
+              placeholder="What's this code for? (optional)"
+              onChange={(e) => setLabel(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={addNew}
+              className="h-10 rounded-md border border-line bg-card px-3 text-sm font-medium hover:bg-paper-2"
+            >
+              Use {trimmed}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
