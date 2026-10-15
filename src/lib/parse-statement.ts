@@ -15,8 +15,10 @@ const SKIP_VENDOR =
 
 // Amount group tolerates "$" and "-" in either order ("-$45.00", "$-45.00"),
 // plus a trailing "-" or "CR" marker some statements use for returns/credits.
+// Vendor/order blob includes "_" — Vistaprint-style refs like VP_V6WKRBP8
+// were dropped entirely because "_" never matched.
 const CHARGE_RE =
-  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+-]*?)\s+(\(?[-$]{0,2}[\d,]+\.\d{2}\)?)(-|\s*CR\.?\b)?/gi;
+  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+_-]*?)\s+(\(?[-$]{0,2}[\d,]+\.\d{2}\)?)(-|\s*CR\.?\b)?/gi;
 
 function extractCharges(text: string): Charge[] {
   const charges: Charge[] = [];

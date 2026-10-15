@@ -66,6 +66,15 @@ test("pulls a phone-style NNN-NNN-NNNN reference out of the vendor", () => {
   assert.equal(parsed.charges[0].amount, 19.99);
 });
 
+test("reads a charge whose reference code has an underscore (Vistaprint-style) instead of dropping the line", () => {
+  const parsed = parseStatementText(
+    `${HEADER}09/25 09/28 VISTAPRINT 866-207-4955 MA VP_V6WKRBP8 $93.27\n`,
+  );
+  assert.equal(parsed.charges.length, 1);
+  assert.ok(parsed.charges[0].vendor.toLowerCase().includes("vistaprint"));
+  assert.equal(parsed.charges[0].amount, 93.27);
+});
+
 test("reads comma amounts and ignores decoy dollar totals in the header", () => {
   const parsed = parseStatementText(
     `${HEADER}07/26 07/27 LOWES #0182 AL $1,234.56\n`,
