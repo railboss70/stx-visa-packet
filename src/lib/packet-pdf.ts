@@ -141,18 +141,20 @@ async function drawExpenseForm(doc: PDFDocument, fonts: Fonts, report: VisaRepor
 
   y -= headerBand;
   const headerH = 28;
+  // Header-band widths come from the same column layout as the rows below,
+  // so the vertical rules land on the same x positions.
+  const col = columnLayout(width);
   const colsHeader = [
-    { w: 210, label: "Employee Name" },
-    { w: 210, label: report.employeeName || " " },
-    { w: 110, label: "Last 4 Card #'s" },
-    { w: 70, label: report.last4 || " " },
-    { w: 86, label: "Total Expenses" },
-    { w: 50, label: formatMoney(reportTotal(report)) },
+    { w: col.date + col.vendor, label: "Employee Name" },
+    { w: col.desc, label: report.employeeName || " " },
+    { w: col.equip + col.or, label: "Last 4 Card #'s" },
+    { w: col.job, label: report.last4 || " " },
+    { w: col.code, label: "Total Expenses" },
+    { w: col.amount, label: formatMoney(reportTotal(report)) },
   ];
   drawHeaderRow(page, fonts, margin, y - headerH, colsHeader, headerH);
   y -= headerH;
 
-  const col = columnLayout(width);
   const subH = 22;
   drawColumnHead(page, fonts, margin, y - subH, col, subH);
   y -= subH;

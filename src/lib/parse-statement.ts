@@ -17,8 +17,11 @@ const SKIP_VENDOR =
 // plus a trailing "-" or "CR" marker some statements use for returns/credits.
 // Vendor/order blob includes "_" — Vistaprint-style refs like VP_V6WKRBP8
 // were dropped entirely because "_" never matched.
+// The amount's cents group ends with (?!\d) so it can't stop early inside a
+// longer decimal-formatted token (e.g. a "Purchase Order No." like 500.465)
+// that sits on the line before the real dollar amount.
 const CHARGE_RE =
-  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+_-]*?)\s+(\(?[-$]{0,2}[\d,]+\.\d{2}\)?)(-|\s*CR\.?\b)?/gi;
+  /(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+(?:(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)\s+)?([A-Z0-9][A-Z0-9 #*.,'\/&+_-]*?)\s+(\(?[-$]{0,2}[\d,]+\.\d{2}(?!\d)\)?)(-|\s*CR\.?\b)?/gi;
 
 function extractCharges(text: string): Charge[] {
   const charges: Charge[] = [];
@@ -42,7 +45,9 @@ function extractCharges(text: string): Charge[] {
       const { vendor, orderNo } = splitVendor(vendorBlob);
       if (!vendor || SKIP_VENDOR.test(vendor) || vendor.length < 2) continue;
 
-      const key = `${transDate}|${vendor.toLowerCase()}|${amount.toFixed(2)}`;
+      // Include orderNo so two same-day, same-store, same-amount charges stay
+      // separate when their reference numbers differ.
+      const key = `${transDate}|${vendor.toLowerCase()}|${amount.toFixed(2)}|${orderNo}`;
       if (seen.has(key)) continue;
       seen.add(key);
 

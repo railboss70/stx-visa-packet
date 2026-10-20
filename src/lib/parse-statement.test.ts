@@ -148,6 +148,25 @@ Total Purchases and Debits ....................... $2,145.87
 Total Credits ..................................... $45.00
 `;
 
+test("doesn't let a decimal-formatted purchase-order number steal the amount match", () => {
+  const parsed = parseStatementText(
+    `${HEADER}08/12 08/13 AMAZON MKTPL*A1B2C3D4 PO NO. 500.465 AMZN.COM/BILL WA $14.03\n`,
+  );
+  assert.equal(parsed.charges.length, 1);
+  assert.equal(parsed.charges[0].amount, 14.03);
+});
+
+test("keeps two separate charges that share date, vendor, and amount but have different order numbers", () => {
+  const parsed = parseStatementText(
+    `${HEADER}08/14 08/15 WM SUPERCENTER #1234 000000205390 GA $63.88
+08/14 08/15 WM SUPERCENTER #1234 000000605814 GA $63.88
+`,
+  );
+  assert.equal(parsed.charges.length, 2);
+  const orderNos = parsed.charges.map((c) => c.orderNo).sort();
+  assert.deepEqual(orderNos, ["000000205390", "000000605814"]);
+});
+
 test("fake Aug 2026 statement keeps all 12 charges and skips decoy totals", () => {
   const parsed = parseStatementText(FAKE_AUG_2026);
   assert.equal(parsed.last4, "5935");
