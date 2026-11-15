@@ -4,6 +4,7 @@ import {
   INDIRECT_CODES,
   JOB_CODES,
   WORK_ORDER_CODES,
+  MAX_WORK_ORDER,
   keywordsFromLabel,
   searchCodes,
   woLabel,
@@ -160,7 +161,7 @@ export function WorkOrderPicker({
     { id: "materials" as const, label: "Materials" },
     { id: "other" as const, label: "Other" },
   ];
-  const numbers = ["INS", ...Array.from({ length: 20 }, (_, i) => String(i + 1).padStart(3, "0"))];
+  const numbers = ["INS", ...Array.from({ length: MAX_WORK_ORDER }, (_, i) => String(i + 1).padStart(3, "0"))];
 
   return (
     <div className="space-y-3">
