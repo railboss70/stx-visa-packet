@@ -131,6 +131,9 @@ export const INDIRECT_CODES: CostCode[] = [
   indirect("600.505", "Software — AI Subscriptions", ["grok", "chatgpt", "openai", "claude", "xai", "ai"]),
 ];
 
+/** Highest work order number the app offers (WO #001 through this one). */
+export const MAX_WORK_ORDER = 40;
+
 function padWo(n: number) {
   return String(n).padStart(3, "0");
 }
@@ -154,7 +157,7 @@ function buildWorkOrders(): CostCode[] {
       woType: "other",
     },
   ];
-  for (let n = 1; n <= 20; n++) {
+  for (let n = 1; n <= MAX_WORK_ORDER; n++) {
     const wo = padWo(n);
     rows.push({
       code: String(41800 + n),
@@ -190,7 +193,7 @@ export const ALL_CODES: CostCode[] = [...JOB_CODES, ...INDIRECT_CODES, ...WORK_O
 
 export const WORK_ORDER_NUMBERS = [
   "INS",
-  ...Array.from({ length: 20 }, (_, i) => padWo(i + 1)),
+  ...Array.from({ length: MAX_WORK_ORDER }, (_, i) => padWo(i + 1)),
 ];
 
 export function findCode(code: string, pool: CostCode[] = ALL_CODES) {
