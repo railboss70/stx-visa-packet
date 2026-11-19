@@ -137,9 +137,12 @@ export function missingCodingFields(charge: Charge): string[] {
   return missing;
 }
 
+// Employee name, "Visa Summary", then the statement date as YYMMDD,
+// e.g. "Matthew Pitsenbarger Visa Summary 261118.pdf".
 export function packetFileName(report: VisaReport) {
   const ymd = report.weekEnding.replaceAll("-", "").slice(2);
-  return `${ymd || "visa"} Visa Summary.pdf`;
+  const name = (report.employeeName || "").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
+  return [name, "Visa Summary", ymd].filter(Boolean).join(" ") + ".pdf";
 }
 
 export function reportTotal(report: VisaReport) {
