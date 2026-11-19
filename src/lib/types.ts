@@ -9,6 +9,10 @@ export type Receipt = {
   name: string;
   mime: string;
   dataUrl: string;
+  /** The photo as taken, kept after cropping so the corners can be moved again. */
+  original?: string;
+  /** Last crop: corners as fractions of the original photo, and whether Scan look was on. */
+  crop?: { corners: { x: number; y: number }[]; scan: boolean };
 };
 
 export type Charge = {
