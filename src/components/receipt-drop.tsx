@@ -128,14 +128,8 @@ export function ReceiptDrop({
             <p className="text-xs text-muted">Stays full-page in the packet</p>
           </div>
           {r.mime.startsWith("image/") ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Crop receipt"
-              onClick={() => setCropId(r.id)}
-            >
-              <Crop />
+            <Button type="button" variant="outline" size="sm" onClick={() => setCropId(r.id)}>
+              <Crop /> {r.crop ? "Re-crop" : "Crop & scan"}
             </Button>
           ) : null}
           {onRead && r.mime.startsWith("image/") ? (
@@ -164,12 +158,15 @@ export function ReceiptDrop({
       {cropTarget ? (
         <ReceiptCropper
           open
-          dataUrl={cropTarget.dataUrl}
+          dataUrl={cropTarget.original || cropTarget.dataUrl}
+          initial={cropTarget.crop}
           onCancel={() => setCropId(null)}
-          onConfirm={(croppedDataUrl) => {
+          onConfirm={(croppedDataUrl, crop) => {
             onChange(
               receipts.map((x) =>
-                x.id === cropTarget.id ? { ...x, dataUrl: croppedDataUrl, mime: "image/jpeg" } : x,
+                x.id === cropTarget.id
+                  ? { ...x, original: x.original || x.dataUrl, crop, dataUrl: croppedDataUrl, mime: "image/jpeg" }
+                  : x,
               ),
             );
             setCropId(null);
