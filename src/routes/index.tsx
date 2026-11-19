@@ -10,6 +10,9 @@ import { useVisaStore } from "@/lib/store";
 import { isCoded, packetFileName, reportTotal, type VisaReport } from "@/lib/types";
 import { fileToDataUrl, formatMdY, formatMoney, assetUrl } from "@/lib/utils";
 
+// Shown on the home page. Bump with each release.
+const APP_VERSION = "22";
+
 export const Route = createFileRoute("/")({ component: Home });
 
 export function Home() {
@@ -60,6 +63,7 @@ export function Home() {
           <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-navy">
             Visa Packet
           </h1>
+          <p className="mt-0.5 font-mono text-[11px] text-subtle">Version {APP_VERSION}</p>
           <p className="mt-2 max-w-xl text-muted">
             Drop a Synovus statement, code each charge to a job, work order, equipment unit, or
             indirect, attach receipts, and download the packet accounting wants.
